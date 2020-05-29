@@ -363,7 +363,9 @@ int main(int argc, char *argv[]) {
             // ----------------- 7. Loading the model to the device --------------------------------------------------------
             next_step();
             startTime = Time::now();
+            std::cout << "==============BEFORE==============" << std::endl;
             exeNetwork = ie.LoadNetwork(cnnNetwork, device_name);
+            std::cout << "==============AFTER==============" << std::endl;
             duration_ms = double_to_string(get_total_ms_time(startTime));
             slog::info << "Load network took " << duration_ms << " ms" << slog::endl;
             if (statistics)

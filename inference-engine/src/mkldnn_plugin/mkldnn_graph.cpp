@@ -337,11 +337,15 @@ void MKLDNNGraph::Replicate(const ICNNNetwork &network, const MKLDNNExtensionMan
 }
 
 void MKLDNNGraph::InitGraph() {
+    std::cout << "**************** InitGraph *********************" << std::endl;
     MKLDNNGraphOptimizer optimizer;
 
     SortTopologically();
+    std::cout << "start InitNodes" << std::endl;
     InitNodes();
+    std::cout << "end InitNodes" << std::endl;
     optimizer.ApplyCommonGraphOptimizations(*this);
+
     SortTopologically();
 
     InitDescriptors();
@@ -415,7 +419,9 @@ void MKLDNNGraph::InitGraph() {
 }
 
 void MKLDNNGraph::InitNodes() {
+    // std::cout << "count graph node: " << graphNodes.size() << std::endl;
     for (auto &node : graphNodes) {
+        // std::cout << node->getName() << std::endl;
         node->init();
     }
 }

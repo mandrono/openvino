@@ -164,9 +164,9 @@ MKLDNNExecNetwork::MKLDNNExecNetwork(const InferenceEngine::ICNNNetwork &network
         graph->CreateGraph(static_cast<ICNNNetwork&>(*localNetwork), extensionManager, numaNodesWeights[numaNode]);
         return graph;
     }};
-
-    _taskExecutor->runAndWait({std::thread::hardware_concurrency(), [this] {_graphs.local();}});
-
+    std::cout << "###################### start executor ###################" << std::endl;
+    _taskExecutor->runAndWait({1/*std::thread::hardware_concurrency()*/, [this] {_graphs.local();}});
+    std::cout << "###################### end executor ###################" << std::endl;
     // Save all MemoryLayer data tensors. Will use insight about mechanics
     // of MemoryLayer implementation. It uses output edge of MemoryLayer
     // producer as storage for tensor to keep it between infer calls.

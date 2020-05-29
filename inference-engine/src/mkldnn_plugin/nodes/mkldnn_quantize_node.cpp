@@ -121,9 +121,30 @@ void MKLDNNQuantizeNode::init() {
         if (*quantizationParamsAxisesSizes.begin() != axisRealSize)
             THROW_IE_EXCEPTION << "Unsupported input sizes for Quantize layer with name " << getName();
     }
+// BUT ERROR IS HERE BECAUSE nullptr
+// "custom" blob is absent because input 1 is layer with name: Transpose_154182 and type: Permute
+// but must be CONST id::5409
+
+// Unsqueeze_154180__Unsqueeze_154180__Const    type: Input
+//   |
+// Transpose_154182     type: Permute
+//   |
+// FakeQuantize
+
+// input(0) name: Transpose_154178 type: Permute
+// input(1) name: Transpose_154182 type: Permute
+// input(2) name: Transpose_154186 type: Permute
+// input(3) name: Transpose_154190 type: Permute
+// input(4) name: Transpose_154194 type: Permute
+
+    std::cout << std::endl << getName() << " " << getType() << std::endl; 
 
     auto inputLowBlob = dynamic_cast<TBlob<float>*>(getParentEdgesAtPort(1)[0]->getParent()->getCnnLayer()->blobs["custom"].get());
+//  SEG FAULT OCCURRED HERE
+std::cout << inputLowBlob << std::endl;
+std::cout << "SEG START" << std::endl;
     auto inputLowData = inputLowBlob->buffer().as<float*>();
+std::cout << "SEG END" << std::endl;
 
     auto inputHighBlob = dynamic_cast<TBlob<float>*>(getParentEdgesAtPort(2)[0]->getParent()->getCnnLayer()->blobs["custom"].get());
     auto inputHighData = inputHighBlob->buffer().as<float*>();
