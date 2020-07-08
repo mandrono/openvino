@@ -26,7 +26,7 @@ class DetectionOutputImpl: public ExtLayerBase {
 public:
     explicit DetectionOutputImpl(const CNNLayer* layer) {
         try {
-            if (layer->insData.size() != 3)
+            if (layer->insData.size() < 3 || layer->insData.size() > 5)
                 THROW_IE_EXCEPTION << "Incorrect number of input edges for layer " << layer->name;
             if (layer->outData.empty())
                 THROW_IE_EXCEPTION << "Incorrect number of output edges for layer " << layer->name;
@@ -49,6 +49,9 @@ public:
             _prior_size = _normalized ? 4 : 5;
             _offset = _normalized ? 0 : 1;
             _num_loc_classes = _share_location ? 1 : _num_classes;
+
+            if (layer->insData.size() == 5)
+                _objectness_score = layer->GetParamAsFloat("objectness_score", 0.0f);
 
             std::string code_type_str = layer->GetParamAsString("code_type", "caffe.PriorBoxParameter.CORNER");
             _code_type = (code_type_str == "caffe.PriorBoxParameter.CENTER_SIZE" ? CodeType::CENTER_SIZE
@@ -109,9 +112,8 @@ public:
             _num_priors_actual = InferenceEngine::make_shared_blob<int>({Precision::I32, num_priors_actual_size, C});
             _num_priors_actual->allocate();
 
-            addConfig(layer, {DataConfigurator(ConfLayout::PLN),
-                       DataConfigurator(ConfLayout::PLN),
-                       DataConfigurator(ConfLayout::PLN)}, {DataConfigurator(ConfLayout::PLN)});
+            std::vector<DataConfigurator> in_data_conf(layer->insData.size(), DataConfigurator(ConfLayout::PLN));
+            addConfig(layer, in_data_conf, {DataConfigurator(ConfLayout::PLN)});
         } catch (InferenceEngine::details::InferenceEngineException &ex) {
             errorMsg = ex.what();
         }
@@ -121,19 +123,21 @@ public:
                        ResponseDesc *resp) noexcept override {
         float *dst_data = outputs[0]->buffer();
 
-        const float *loc_data    = inputs[idx_location]->buffer();
-        const float *conf_data   = inputs[idx_confidence]->buffer();
-        const float *prior_data  = inputs[idx_priors]->buffer();
+        const float *loc_data    = inputs[idx_location]->buffer().as<const float *>();
+        const float *conf_data   = inputs[idx_confidence]->buffer().as<const float *>();
+        const float *prior_data  = inputs[idx_priors]->buffer().as<const float *>();
+        const float *arm_conf_data = inputs.size() > 3 ? inputs[idx_arm_confidence]->buffer().as<const float *>() : nullptr;
+        const float *arm_loc_data = inputs.size() > 4 ? inputs[idx_arm_location]->buffer().as<const float *>() : nullptr;
 
         const int N = inputs[idx_confidence]->getTensorDesc().getDims()[0];
 
-        float *decoded_bboxes_data = _decoded_bboxes->buffer();
-        float *reordered_conf_data = _reordered_conf->buffer();
-        float *bbox_sizes_data     = _bbox_sizes->buffer();
-        int *detections_data       = _detections_count->buffer();
-        int *buffer_data           = _buffer->buffer();
-        int *indices_data          = _indices->buffer();
-        int *num_priors_actual     = _num_priors_actual->buffer();
+        float *decoded_bboxes_data = _decoded_bboxes->buffer().as<float *>();
+        float *reordered_conf_data = _reordered_conf->buffer().as<float *>();
+        float *bbox_sizes_data     = _bbox_sizes->buffer().as<float *>();
+        int *detections_data       = _detections_count->buffer().as<int *>();
+        int *buffer_data           = _buffer->buffer().as<int *>();
+        int *indices_data          = _indices->buffer().as<int *>();
+        int *num_priors_actual     = _num_priors_actual->buffer().as<int *>();
 
         for (int n = 0; n < N; ++n) {
             const float *ppriors = prior_data;
@@ -147,8 +151,27 @@ public:
                 const float *ploc = loc_data + n*4*_num_priors;
                 float *pboxes = decoded_bboxes_data + n*4*_num_priors;
                 float *psizes = bbox_sizes_data + n*_num_priors;
-                decodeBBoxes(ppriors, ploc, prior_variances, pboxes, psizes, num_priors_actual, n);
+
+                if (inputs.size() > 4) {
+                    std::vector<float> arm_boxes(4*_num_priors);
+                    std::vector<float> arm_bbox_sizes(_num_priors);
+                    const float *p_arm_loc = arm_loc_data + n*4*_num_priors;
+
+                    decodeBBoxes(ppriors, p_arm_loc, prior_variances, arm_boxes.data(), arm_bbox_sizes.data(), num_priors_actual, n);
+                    decodeBBoxes(arm_boxes.data(), ploc, prior_variances, pboxes, psizes, num_priors_actual, n);
+                } else {
+                    decodeBBoxes(ppriors, ploc, prior_variances, pboxes, psizes, num_priors_actual, n);
+                }
             } else {
+                std::vector<float> arm_boxes;
+                std::vector<float> arm_bbox_sizes;
+                if (inputs.size() > 4) {
+                    arm_boxes.resize(4*_num_loc_classes*_num_priors);
+                    arm_bbox_sizes.resize(_num_loc_classes*_num_priors);
+                    const float *p_arm_loc = arm_loc_data + 4*_num_loc_classes*_num_priors;
+                    decodeBBoxes(ppriors, p_arm_loc, prior_variances, arm_boxes.data(), arm_bbox_sizes.data(), num_priors_actual, n);
+                }
+
                 for (int c = 0; c < _num_loc_classes; ++c) {
                     if (c == _background_label_id) {
                         continue;
@@ -157,15 +180,35 @@ public:
                     const float *ploc = loc_data + n*4*_num_loc_classes*_num_priors + c*4;
                     float *pboxes = decoded_bboxes_data + n*4*_num_loc_classes*_num_priors + c*4*_num_priors;
                     float *psizes = bbox_sizes_data + n*_num_loc_classes*_num_priors + c*_num_priors;
-                    decodeBBoxes(ppriors, ploc, prior_variances, pboxes, psizes, num_priors_actual, n);
+                    if (inputs.size() > 4) {
+                        decodeBBoxes(arm_boxes.data(), ploc, prior_variances, pboxes, psizes, num_priors_actual, n);
+                    } else {
+                        decodeBBoxes(ppriors, ploc, prior_variances, pboxes, psizes, num_priors_actual, n);
+                    }
                 }
             }
         }
 
-        for (int n = 0; n < N; ++n) {
-            for (int c = 0; c < _num_classes; ++c) {
+        if (inputs.size() > 3) {
+            for (int n = 0; n < N; ++n) {
                 for (int p = 0; p < _num_priors; ++p) {
-                    reordered_conf_data[n*_num_priors*_num_classes + c*_num_priors + p] = conf_data[n*_num_priors*_num_classes + p*_num_classes + c];
+                    if (arm_conf_data[n*_num_priors*2 + p * 2 + 1] < _objectness_score) {
+                        for (int c = 0; c < _num_classes; ++c) {
+                            reordered_conf_data[n*_num_priors*_num_classes + c*_num_priors + p] = c == _background_label_id ? 1.0f : 0.0f;
+                        }
+                    } else {
+                        for (int c = 0; c < _num_classes; ++c) {
+                            reordered_conf_data[n*_num_priors*_num_classes + c*_num_priors + p] = conf_data[n*_num_priors*_num_classes + p*_num_classes + c];
+                        }
+                    }
+                }
+            }
+        } else {
+            for (int n = 0; n < N; ++n) {
+                for (int c = 0; c < _num_classes; ++c) {
+                    for (int p = 0; p < _num_priors; ++p) {
+                        reordered_conf_data[n*_num_priors*_num_classes + c*_num_priors + p] = conf_data[n*_num_priors*_num_classes + p*_num_classes + c];
+                    }
                 }
             }
         }
@@ -310,7 +353,8 @@ private:
     const int idx_location = 0;
     const int idx_confidence = 1;
     const int idx_priors = 2;
-
+    const int idx_arm_confidence = 3;
+    const int idx_arm_location = 4;
 
     int _num_classes = 0;
     int _background_label_id = 0;
@@ -332,6 +376,7 @@ private:
 
     float _nms_threshold = 0.0f;
     float _confidence_threshold = 0.0f;
+    float _objectness_score = 0.0f;
 
     int _num = 0;
     int _num_loc_classes = 0;
