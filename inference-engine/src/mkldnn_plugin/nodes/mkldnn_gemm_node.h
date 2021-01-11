@@ -26,6 +26,8 @@ public:
 
     InferenceEngine::Precision getRuntimePrecision() const override;
 
+    static bool isSupportedOperation(const std::shared_ptr<ngraph::Node>& op, std::string& errorMessage) noexcept;
+
 private:
     float alpha = 1.0f;
     float beta = 1.0f;
@@ -35,13 +37,13 @@ private:
     int xAxis = 0;
     int yAxis = 0;
 
-    bool isThreeInputs = false;
-
     std::vector<int> aOffsets;
     std::vector<int> bOffsets;
     std::vector<int> cOffsets;
 
     template<typename T0, typename T1> void process_data();
+
+    std::string errorPrefix;
 };
 
 }  // namespace MKLDNNPlugin

@@ -1667,7 +1667,6 @@ bool MKLDNNEltwiseNode::canBeInPlace() const {
 }
 
 void MKLDNNEltwiseNode::fillScalesAndShifts() {
-    std::shared_ptr<const ngraph::opset1::Constant> secondIn;
     const auto fillValuesFrom = [&](const MKLDNNNodePtr& constInput, std::vector<float>& buffer) {
         if (getParentEdgeAt(1)->getParent()->getType() != Input ||
             !getParentEdgeAt(1)->getParent()->isConstant() ||

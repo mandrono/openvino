@@ -12,44 +12,70 @@
 #include <mkldnn_extension_utils.h>
 #include "ie_parallel.hpp"
 #include "common/cpu_memcpy.h"
+#include <ngraph/opsets/opset1.hpp>
 
 using namespace mkldnn;
 using namespace MKLDNNPlugin;
 using namespace InferenceEngine;
 
+bool MKLDNNGemmNode::isSupportedOperation(const std::shared_ptr<ngraph::Node>& op, std::string& errorMessage) noexcept {
+    try {
+        const auto matMul = std::dynamic_pointer_cast<const ngraph::opset1::MatMul>(op);
+        if (!matMul) {
+            errorMessage = "Only opset1 MatMul operation is supported";
+            return false;
+        }
+
+        const auto shapeA = matMul->get_input_shape(0);
+        const auto shapeB = matMul->get_input_shape(1);
+
+        for (size_t i = 0; i < matMul->get_input_size(); i++) {
+            const auto inShapeRank = matMul->get_input_shape(i).size();
+            if (inShapeRank < 2 || inShapeRank > 4) {
+                errorMessage = "Unsupported rank: " + std::to_string(inShapeRank) + " on " + std::to_string(i) + " input";
+                return false;
+            }
+        }
+
+        const auto outShapeRank = matMul->get_shape().size();
+        if (outShapeRank < 2 || outShapeRank > 4) {
+            errorMessage = "Unsupported rank: " + std::to_string(outShapeRank) + " on output";
+            return false;
+        }
+    } catch (...) {
+        return false;
+    }
+    return true;
+}
+
 MKLDNNGemmNode::MKLDNNGemmNode(const std::shared_ptr<ngraph::Node>& op, const mkldnn::engine& eng, MKLDNNWeightsSharing::Ptr &cache) :
         MKLDNNNode(op, eng, cache) {
-    auto matMulOp = ngraph::as_type_ptr<ngraph::op::v0::MatMul>(op);
-    if (matMulOp) {
+    std::string errorMessage;
+    if (isSupportedOperation(op, errorMessage)) {
+        errorPrefix = "Gemm node with name '" + getName() + "'";
+
+        const auto matMul = std::dynamic_pointer_cast<const ngraph::opset1::MatMul>(op);
         alpha = 1;
         beta = 1;
-        transposeA = matMulOp->get_transpose_a();
-        transposeB = matMulOp->get_transpose_b();
+        transposeA = matMul->get_transpose_a();
+        transposeB = matMul->get_transpose_b();
     } else {
-        THROW_IE_EXCEPTION_WITH_STATUS(NOT_IMPLEMENTED)
-                << "CPU Gemm node doesn't support ngraph operation " << op->get_type_name() << " with name " << op->get_friendly_name();
+        THROW_IE_EXCEPTION_WITH_STATUS(NOT_IMPLEMENTED) << errorMessage;
     }
 }
 
 void MKLDNNGemmNode::getSupportedDescriptors() {
-    if (getParentEdges().size() != 2 && getParentEdges().size() != 3)
-        THROW_IE_EXCEPTION << "Incorrect number of input edges for layer " << getName();
+    if (getParentEdges().size() != 2)
+        THROW_IE_EXCEPTION  << errorPrefix << " has incorrect number of input edges for layer " << getName();
     if (getChildEdges().empty())
-        THROW_IE_EXCEPTION << "Incorrect number of output edges for layer " << getName();
+        THROW_IE_EXCEPTION  << errorPrefix << " has incorrect number of output edges for layer " << getName();
 
     auto inDims0 = getParentEdgeAt(0)->getDims();
     auto inDims1 = getParentEdgeAt(1)->getDims();
     auto outDims = getChildEdgeAt(0)->getDims();
 
-    if ((inDims0.ndims() < 2 || inDims0.ndims() > 4) ||
-        (inDims1.ndims() < 2 || inDims1.ndims() > 4))
-        THROW_IE_EXCEPTION << "Unsupported input dims count for layer " << getName();
-
-    if (outDims.ndims() < 2 || outDims.ndims() > 4)
-        THROW_IE_EXCEPTION << "Unsupported output dims count for layer " << getName();
-
     if (inDims0.ndims() != inDims1.ndims() || inDims0.ndims() != outDims.ndims())
-        THROW_IE_EXCEPTION << "Invalid dims count for layer " << getName();
+        THROW_IE_EXCEPTION  << errorPrefix << " has invalid dims count";
 
     int nDims = inDims0.ndims();
     xAxis = nDims - 1;
@@ -62,39 +88,12 @@ void MKLDNNGemmNode::getSupportedDescriptors() {
     // The check inDims0[xAxis] != inDims1[yAxis] is correct due to layer semantic
     // coverity[copy_paste_error]
     if (inDims0[xAxis0] != inDims1[yAxis1] || inDims0[yAxis0] != outDims[yAxis] || inDims1[xAxis1] != outDims[xAxis])
-        THROW_IE_EXCEPTION << "Spatial input and output dimensions are incorrect for layer " << getName();
-
-    isThreeInputs = getParentEdges().size() == 3;
-
-    if (isThreeInputs) {
-        auto inDims2 = getParentEdgeAt(2)->getDims();
-
-        if (inDims2.ndims() < 2 || inDims2.ndims() > 4)
-            THROW_IE_EXCEPTION << "Unsupported output dims count for layer " << getName();
-
-        if (inDims2.ndims() != outDims.ndims())
-            THROW_IE_EXCEPTION << "Invalid dims count for layer " << getName();
-
-        if (inDims2[yAxis] != outDims[yAxis] || inDims2[xAxis] != outDims[xAxis])
-            THROW_IE_EXCEPTION << "Spatial input and output dimensions are incorrect for layer " << getName();
-    }
+        THROW_IE_EXCEPTION  << errorPrefix << " has incorrect spatial input and output dimensions";
 
     for (int dim_idx = nDims - 3; dim_idx >= 0; dim_idx--) {
-        if (isThreeInputs) {
-            auto inDims2 = getParentEdgeAt(2)->getDims();
-
-            if (inDims2[dim_idx] != outDims[dim_idx] && inDims2[dim_idx] != 1)
-                THROW_IE_EXCEPTION << "Input batch dimensions are incorrect for layer " << getName();
-
-            int cOffset = 1;
-            for (int i = dim_idx + 1; i < nDims; i++)
-                cOffset *= inDims2[i];
-            cOffsets.push_back(inDims2[dim_idx] == outDims[dim_idx] ? cOffset : 0);
-        }
-
         if ((inDims0[dim_idx] != outDims[dim_idx] && inDims0[dim_idx] != 1) ||
             (inDims1[dim_idx] != outDims[dim_idx] && inDims1[dim_idx] != 1)) {
-            THROW_IE_EXCEPTION << "Input batch dimensions are incorrect for layer " << getName();
+            THROW_IE_EXCEPTION  << errorPrefix << " has incorrect input batch dimensions";
         }
 
         int aOffset = 1;
@@ -122,7 +121,7 @@ void MKLDNNGemmNode::initSupportedPrimitiveDescriptors() {
 
     auto inPrec0 = getOriginalInputPrecisionAtPort(0);
     auto inPrec1 = getOriginalInputPrecisionAtPort(1);
-    if ((inPrec0 != Precision::U8 && inPrec0 != Precision::I8) || inPrec1 != Precision::I8 || isThreeInputs) {
+    if ((inPrec0 != Precision::U8 && inPrec0 != Precision::I8) || inPrec1 != Precision::I8) {
         if (inPrec0 == Precision::BF16 || inPrec1 == Precision::BF16) {
             inPrec0 = Precision::BF16;
             inPrec1 = Precision::BF16;
@@ -149,11 +148,6 @@ void MKLDNNGemmNode::initSupportedPrimitiveDescriptors() {
 
     config.inConfs.push_back(createDataConfig(getParentEdgeAt(0)->getDims(), inputDataType0));
     config.inConfs.push_back(createDataConfig(getParentEdgeAt(1)->getDims(), inputDataType1));
-    if (isThreeInputs) {
-        auto inputDataType2 = MKLDNNExtensionUtils::IEPrecisionToDataType(InferenceEngine::Precision::FP32);
-        config.inConfs.push_back(createDataConfig(getParentEdgeAt(2)->getDims(), inputDataType2));
-    }
-
     config.outConfs.push_back(createDataConfig(getChildEdgeAt(0)->getDims(), outputDataType));
 
     supportedPrimitiveDescriptors.push_back(PrimitiveDescInfo(config, impl_desc_type::gemm_any, MKLDNNMemory::GetPlainFormat(getChildEdgeAt(0)->getDims())));
@@ -162,7 +156,7 @@ void MKLDNNGemmNode::initSupportedPrimitiveDescriptors() {
 void MKLDNNGemmNode::initOptimalPrimitiveDescriptor() {
     auto selected_pd = getSelectedPrimitiveDescriptor();
     if (selected_pd == nullptr)
-        THROW_IE_EXCEPTION << "Preferable primitive descriptor is not set.";
+        THROW_IE_EXCEPTION  << errorPrefix << " did not set preferable primitive descriptor";
     auto config = selected_pd->getConfig();
     if (isInitConfig(config))
         return;
@@ -180,17 +174,11 @@ void MKLDNNGemmNode::createPrimitive() {
     auto& src0MemPtr = getParentEdgeAt(0)->getMemoryPtr();
     auto& src1MemPtr = getParentEdgeAt(1)->getMemoryPtr();
     if (!dstMemPtr || !dstMemPtr->GetPrimitivePtr())
-        THROW_IE_EXCEPTION << "Destination memory isn't allocated.";
+        THROW_IE_EXCEPTION  << errorPrefix << " did not allocate destination memory";
     if (!src0MemPtr || !src0MemPtr->GetPrimitivePtr() || !src1MemPtr || !src1MemPtr->GetPrimitivePtr())
-        THROW_IE_EXCEPTION << "Input memory isn't allocated.";
+        THROW_IE_EXCEPTION  << errorPrefix << " did not allocate input memory";
     if (getSelectedPrimitiveDescriptor() == nullptr)
-        THROW_IE_EXCEPTION << "Preferable primitive descriptor isn't set.";
-
-    if (isThreeInputs) {
-        auto& src2MemPtr = getParentEdgeAt(2)->getMemoryPtr();
-        if (!src2MemPtr || !src2MemPtr->GetPrimitivePtr())
-            THROW_IE_EXCEPTION << "Input memory isn't allocated.";
-    }
+        THROW_IE_EXCEPTION  << errorPrefix << " did not set preferable primitive descriptor";
 }
 
 inline void process_gemm(char transa, char transb, int M, int N, int K, float alpha, const float *A, int lda,
@@ -250,30 +238,14 @@ void MKLDNNGemmNode::process_data() {
     int ldb = transposeB ? K : N;
     int ldc = N;
 
-    const float *src2_ptr;
-    if (isThreeInputs) {
-        auto& srcMemory2 = getParentEdgeAt(2)->getMemory();
-        src2_ptr = reinterpret_cast<const float *>(srcMemory2.GetPtr());
-    } else {
-        src2_ptr = dst_ptr;
-    }
-
-    if (!isThreeInputs) {
-        beta = 0.f;
-    }
+    beta = 0.f;
 
     for (int b1 = 0; b1 < MB1; b1++) {
         const T0 *a_ptr = src0_ptr;
         const T1 *b_ptr = src1_ptr;
-        const float *c_ptr = src2_ptr;
         float *d_ptr = dst_ptr;
 
         for (int b2 = 0; b2 < MB2; b2++) {
-            if (isThreeInputs) {
-                cpu_memcpy(d_ptr, c_ptr, M * N * sizeof(float));
-                c_ptr += cOffsets[0];
-            }
-
             process_gemm(transa, transb, M, N, K, alpha, a_ptr, lda, b_ptr, ldb, beta, d_ptr, ldc);
 
             a_ptr += aOffsets[0];
@@ -284,10 +256,6 @@ void MKLDNNGemmNode::process_data() {
         src0_ptr += aOffsets[1];
         src1_ptr += bOffsets[1];
         dst_ptr += MB2 * M * N;
-
-        if (isThreeInputs) {
-            src2_ptr += cOffsets[1];
-        }
     }
 }
 
@@ -306,7 +274,7 @@ void MKLDNNGemmNode::execute(mkldnn::stream strm) {
             process_data<uint8_t, int8_t>();
             break;
         default:
-            THROW_IE_EXCEPTION << "Gemm node: first input has unsupported precision";
+            THROW_IE_EXCEPTION  << errorPrefix << " has incorrect precision on first input";
     }
 }
 

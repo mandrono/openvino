@@ -73,6 +73,7 @@
 
 #include "nodes/mkldnn_mvn_node.h"
 #include "nodes/mkldnn_quantize_node.h"
+#include "ngraph_transformations/convert_to_legacy_opset.hpp"
 
 #if !defined(__arm__) && !defined(_M_ARM) && !defined(__aarch64__) && !defined(_M_ARM64)
 # ifdef _WIN32
@@ -280,6 +281,8 @@ static void Transformation(CNNNetwork& clonedNetwork, const Config& conf) {
         // UnrollTI transformation is disabled by default, is turned on by LowLatency transformation
         return node->get_rt_info().count("UNROLL_TI") == 0;
     });
+
+    ConvertToLegacyOpset(nGraphFunc);
 
     postLPTPassManager.run_passes(nGraphFunc);
 }
