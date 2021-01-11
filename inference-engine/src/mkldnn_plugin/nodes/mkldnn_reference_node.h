@@ -12,7 +12,11 @@ namespace MKLDNNPlugin {
 
 class MKLDNNReferenceNode : public MKLDNNNode {
 public:
+<<<<<<< HEAD
     MKLDNNReferenceNode(const std::shared_ptr<ngraph::Node>& op, const mkldnn::engine& eng, MKLDNNWeightsSharing::Ptr &cache, const std::string& errorMessage);
+=======
+    MKLDNNReferenceNode(const std::shared_ptr<ngraph::Node>& op, const mkldnn::engine& eng, MKLDNNWeightsSharing::Ptr &cache);
+>>>>>>> [CPU] Plug-in migration on ngraph initial commit
     ~MKLDNNReferenceNode() override = default;
 
     void getSupportedDescriptors() override;
@@ -23,7 +27,10 @@ public:
 
 private:
     const std::shared_ptr<ngraph::Node> ngraphOp;
+<<<<<<< HEAD
     const std::string additionalErrorMessage;
+=======
+>>>>>>> [CPU] Plug-in migration on ngraph initial commit
 };
 
 }  // namespace MKLDNNPlugin

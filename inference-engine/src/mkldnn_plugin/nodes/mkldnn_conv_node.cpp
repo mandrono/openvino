@@ -172,6 +172,7 @@ void MKLDNNConvolutionNode::getSupportedDescriptors() {
                     }
                     break;
                 }
+                break;
             }
         }
     }

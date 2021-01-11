@@ -100,14 +100,17 @@ void MKLDNNGraphOptimizer::ApplyCommonGraphOptimizations(MKLDNNGraph &graph) {
     FuseConvolutionSumAndConvolutionSumActivation(graph);
     graph.RemoveDroppedNodes();
 
-    FuseConvolutionAndSimpleOperation(graph);
-    graph.RemoveDroppedNodes();
+// TODO [NM]: transformation should be implemented w/o using of CNNLayer
+//    FuseConvolutionAndSimpleOperation(graph);
+//    graph.RemoveDroppedNodes();
 
-    FuseFullyConnectedAndSimpleOperation(graph);
-    graph.RemoveDroppedNodes();
+// TODO [NM]: transformation should be implemented w/o using of CNNLayer
+//    FuseFullyConnectedAndSimpleOperation(graph);
+//    graph.RemoveDroppedNodes();
 
-    FuseMVNAndSimpleOperation(graph);
-    graph.RemoveDroppedNodes();
+// TODO [NM]: transformation should be implemented w/o using of CNNLayer
+//    FuseMVNAndSimpleOperation(graph);
+//    graph.RemoveDroppedNodes();
 
     FuseInterpolateAndSimpleOperation(graph);
     graph.RemoveDroppedNodes();
