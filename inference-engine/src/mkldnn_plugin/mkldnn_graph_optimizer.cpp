@@ -130,9 +130,8 @@ void MKLDNNGraphOptimizer::ApplyCommonGraphOptimizations(MKLDNNGraph &graph) {
     FuseInterpolateAndSimpleOperation(graph);
     graph.RemoveDroppedNodes();
 
-// TODO [NM]: transformation should be implemented w/o using of CNNLayer
-//    FuseNormalizeAndSimpleOperation(graph);
-//    graph.RemoveDroppedNodes();
+    FuseNormalizeAndSimpleOperation(graph);
+    graph.RemoveDroppedNodes();
 
     FuseEltwiseAndSimple(graph);
     graph.RemoveDroppedNodes();
@@ -1470,69 +1469,84 @@ void MKLDNNGraphOptimizer::FuseInterpolateAndSimpleOperation(MKLDNNGraph &graph)
 }
 
 void MKLDNNGraphOptimizer::FuseNormalizeAndSimpleOperation(MKLDNNGraph &graph) {
-//    auto& graphNodes = graph.GetNodes();
-//
-//    auto isSutableParentNode = [](MKLDNNNodePtr node) {
-//        bool isSutableNormalize = node->getType() == Normalize;
-//
-//        if (isSutableNormalize) {
-//            return node->getChildEdges().size() == 1;
-//        } else {
-//            return false;
-//        }
-//    };
-//
-//    auto isSutableChildNode = [&](MKLDNNNodePtr node) {
-//        if (!node->getCnnLayer())
-//            return false;
-//
-//        if (node->getType() == Quantize) {
-//            auto* quantizeNode = dynamic_cast<MKLDNNQuantizeNode*>(node.get());
-//            if (quantizeNode == nullptr)
-//                THROW_IE_EXCEPTION << "Cannot get quantize layer " << node->getName();
-//            return !quantizeNode->isBinarization();
-//        } else if (node->getType() == Eltwise) {
-//            auto *eltwiseNode = dynamic_cast<MKLDNNEltwiseNode *>(node.get());
-//            if (eltwiseNode == nullptr)
-//                THROW_IE_EXCEPTION << "Cannot get Eltwise node " << node->getName();
-//            return IsOneOf(eltwiseNode->getOpType(), {Relu, Gelu, Elu, Logistic, BoundedRelu, Clamp, Tanh, Swish,
-//                                                      Hswish, Mish, Hsigmoid, Round, Linear, Abs, Square, Sqrt}) ||
-//                    ((eltwiseNode->getOpType() == MulAdd && eltwiseNode->getCnnLayer()->blobs.size() == 2) ||
-//                     (eltwiseNode->getOpType() == Prelu));
-//        }
-//
-//        return false;
-//    };
-//
-//    auto parent = graphNodes.begin();
-//    while (parent != graphNodes.end()) {
-//        auto parentNode = *parent;
-//        if (!isSutableParentNode(parentNode)) {
-//            parent++;
-//            continue;
-//        }
-//
-//        auto childNode = parentNode->getChildEdgeAt(0)->getChild();
-//        if (!isSutableChildNode(childNode)) {
-//            parent++;
-//            continue;
-//        }
-//
-//        parentNode->fuseWith(childNode);
-//
-//        if (childNode->getType() == Quantize || childNode->getType() == Eltwise) {
-//            auto parentEdges = childNode->parentEdges;
-//            for (auto &parentEdge : parentEdges) {
-//                auto p_edge = parentEdge.lock();
-//                if (p_edge->getParent()->getType() == Normalize)
-//                    continue;
-//
-//                removeEdge(graph, p_edge);
-//            }
-//        }
-//
-//        graph.DropNode(childNode);
-//    }
+    auto& graphNodes = graph.GetNodes();
+
+    auto isSutableParentNode = [](MKLDNNNodePtr node) {
+        bool isSutableNormalize = node->getType() == Normalize;
+        if (isSutableNormalize) {
+            return node->getChildEdges().size() == 1;
+        } else {
+            return false;
+        }
+    };
+
+    auto isSupportedSecondInput = [](MKLDNNNodePtr node) {
+        if (node->getParentEdgeAt(1)->getParent()->isConstant()) {
+            auto dims = node->getParentEdgeAt(1)->getDims().ToSizeVector();
+            if (std::accumulate(dims.begin(), dims.end(), 1, std::multiplies<size_t>()) == 1)
+                return true;
+            const auto normDims = node->getParentEdgeAt(0)->getDims().ToSizeVector();
+            if (dims.size() > normDims.size())
+                return false;
+            for (size_t i = 0; i < (normDims.size() - dims.size()); i++) {
+                dims.insert(dims.begin(), 1);
+            }
+            for (size_t i = 0; i < dims.size(); i++) {
+                if ((i == 1 && dims[i] != normDims[1]) || (i != 1 && dims[i] != 1))
+                    return false;
+            }
+            return true;
+        }
+        return false;
+    };
+
+    auto isSutableChildNode = [&](MKLDNNNodePtr node) {
+        if (node->getType() == Quantize) {
+            auto* quantizeNode = dynamic_cast<MKLDNNQuantizeNode*>(node.get());
+            if (quantizeNode == nullptr)
+                THROW_IE_EXCEPTION << "Cannot get quantize layer " << node->getName();
+            return !quantizeNode->isBinarization();
+        } else if (node->getType() == Eltwise) {
+            return one_of(node->getAlgorithm(), EltwiseRelu, EltwiseGelu, EltwiseElu, EltwiseSigmoid, EltwiseBoundedRelu, EltwiseClamp, EltwiseTanh,
+                                                EltwiseSwish, EltwiseHswish, EltwiseMish, EltwiseHsigmoid, EltwiseRoundHalfToEven,
+                                                EltwiseRoundHalfAwayFromZero, EltwiseLinear, EltwiseAbs, EltwiseSquare, EltwiseSqrt) ||
+                    (one_of(node->getAlgorithm(), EltwiseAdd, EltwiseMultiply, EltwiseSubtract, EltwiseDivide, EltwisePrelu) && isSupportedSecondInput(node));
+                    // TODO [NM]: implemented after enabling MulAdd operation
+                    // ((eltwiseNode->getOpType() == MulAdd && eltwiseNode->getCnnLayer()->blobs.size() == 2)
+        }
+
+        return false;
+    };
+
+    auto parent = graphNodes.begin();
+    while (parent != graphNodes.end()) {
+        auto parentNode = *parent;
+        if (!isSutableParentNode(parentNode)) {
+            parent++;
+            continue;
+        }
+
+        auto childNode = parentNode->getChildEdgeAt(0)->getChild();
+        if (!isSutableChildNode(childNode)) {
+            parent++;
+            continue;
+        }
+
+        parentNode->fuseWith(childNode);
+
+        if (childNode->getType() == Quantize || childNode->getType() == Eltwise) {
+            auto parentEdges = childNode->parentEdges;
+            for (auto &parentEdge : parentEdges) {
+                auto p_edge = parentEdge.lock();
+                if (p_edge->getParent()->getType() == Normalize)
+                    continue;
+
+                removeEdge(graph, p_edge);
+            }
+        }
+
+        graph.DropNode(childNode);
+    }
 }
 
 void MKLDNNGraphOptimizer::FuseEltwiseAndSimple(MKLDNNGraph &graph) {

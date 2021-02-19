@@ -20,7 +20,6 @@ struct jit_normalize_config_params {
     bool is_nhwc;
     bool is_blk;
     bool across_spatial;
-    bool channel_shared;
     mkldnn::memory::data_type src_dt;
     mkldnn::memory::data_type dst_dt;
     int src_data_size;
@@ -31,7 +30,6 @@ struct jit_normalize_config_params {
 struct jit_normalize_call_args {
     const void *src;
     void *dst;
-    const float *weights;
     const float *modulo;
     const float *fused_factor;
     size_t src_stride;
@@ -87,6 +85,8 @@ public:
         return false;
     }
 
+    static bool isSupportedOperation(const std::shared_ptr<ngraph::Node>& op, std::string& errorMessage) noexcept;
+
 private:
     template<typename T>
     struct NormalizeExecute;
@@ -109,13 +109,11 @@ private:
     template <typename in_data_t, typename out_data_t>
     void normalize_function(const in_data_t* src_data, out_data_t* dst_data, const InferenceEngine::SizeVector& dims);
 
-    MemoryBlob::Ptr weights_blob;
     bool across_spatial = true;
-    bool channel_shared = true;
     float eps = 1e-10f;
 
-    InferenceEngine::Precision input_prec, output_prec, weights_prec;
-    size_t src_data_size, dst_data_size, weights_data_size;
+    InferenceEngine::Precision input_prec, output_prec;
+    size_t src_data_size, dst_data_size;
 
     mkldnn::primitive_attr attr;
 
@@ -128,6 +126,11 @@ private:
     std::vector<std::shared_ptr<mkldnn::impl::cpu::ref_depthwise_scalar_fwd_t>> depthwise_injectors_ref;
 
     jit_normalize_config_params jcp = {};
+
+    static const size_t DATA = 0;
+    static const size_t AXES = 1;
+
+    static bool isSupportedAxes(const std::vector<size_t> &axes, const ngraph::Shape &dataDims);
 };
 
 }  // namespace MKLDNNPlugin

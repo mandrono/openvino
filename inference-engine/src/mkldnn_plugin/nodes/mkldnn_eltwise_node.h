@@ -121,6 +121,8 @@ private:
     void offset_in_calc(std::vector<size_t>& offset, std::vector<size_t>& dims_in, std::vector<size_t>& dims_out);
 
     static std::map<const ngraph::DiscreteTypeInfo, std::function<void(const std::shared_ptr<ngraph::Node>&, MKLDNNEltwiseNode& node)>> initializers;
+
+    void fillScalesAndShifts();
 };
 
 }  // namespace MKLDNNPlugin
