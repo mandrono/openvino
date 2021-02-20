@@ -4,7 +4,7 @@
 
 #include "mkldnn_pooling_node.h"
 
-#include "mkldnn_quantize_node.h"
+#include "mkldnn_fake_quantize_node.h"
 #include "mkldnn_conv_node.h"
 #include "mkldnn_concat_node.h"
 #include <mkldnn.hpp>
@@ -340,7 +340,7 @@ void MKLDNNPoolingNode::setPostOps(mkldnn::primitive_attr &attr, bool initWeight
     mkldnn::post_ops ops;
 
     for (auto &node : fusedWith) {
-        auto* quantizeNode = dynamic_cast<MKLDNNQuantizeNode *>(node.get());
+        auto* quantizeNode = dynamic_cast<MKLDNNFakeQuantizeNode *>(node.get());
         if (quantizeNode) {
             quantizeNode->appendPostOps(ops);
             continue;

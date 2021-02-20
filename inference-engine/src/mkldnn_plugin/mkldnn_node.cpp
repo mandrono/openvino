@@ -159,8 +159,7 @@ static const InferenceEngine::details::caseless_unordered_map<std::string, Type>
 //        { "LSTMSequence", RNNSeq },
 //        { "GRUSequence", RNNSeq },
 //        { "RNNSequence", RNNSeq },
-//        { "Quantize", Quantize },
-//        { "FakeQuantize", Quantize },
+        { "FakeQuantize", FakeQuantize },
 //        { "BinaryConvolution", BinaryConvolution },
 //        { "DeformableConvolution", DeformableConvolution },
 //        { "TensorIterator", TensorIterator },
@@ -1312,4 +1311,16 @@ MKLDNNNode* MKLDNNNode::NodesFactory::create(const std::shared_ptr<ngraph::Node>
     }
 
     return newNode;
+}
+
+bool MKLDNNNode::canBePerformedAsScaleShift() const {
+    bool inputsIsConst = true;
+    for (size_t i = 1; i < getOriginalInputsNumber(); i++) {
+        if (!getParentEdgesAtPort(i)[0]->getParent()->isConstant() || getParentEdgesAtPort(i)[0]->getParent()->getType() != Input) {
+            inputsIsConst = false;
+        }
+    }
+    return one_of(getAlgorithm(), EltwiseAdd, EltwiseMultiply, EltwiseSubtract, EltwiseDivide, EltwisePrelu, EltwiseMulAdd) && inputsIsConst &&
+                  MKLDNNExtensionUtils::isPerTensorOrPerChannelBroadcastable(getParentEdgesAtPort(0)[0]->getDims().ToSizeVector(),
+                                                                             getParentEdgesAtPort(1)[0]->getDims().ToSizeVector());
 }

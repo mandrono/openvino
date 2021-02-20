@@ -68,7 +68,7 @@ enum Type {
     MemoryInput,
     RNNCell,
     RNNSeq,
-    Quantize,
+    FakeQuantize,
     BinaryConvolution,
     DeformableConvolution,
     TensorIterator,
@@ -221,8 +221,8 @@ static std::string NameFromType(Type type) {
             return "RNNCell";
         case Eltwise:
             return "Eltwise";
-        case Quantize:
-            return "Quantize";
+        case FakeQuantize:
+            return "FakeQuantize";
         case BinaryConvolution:
             return "BinaryConvolution";
         case DeformableConvolution:
@@ -660,6 +660,8 @@ public:
     }
 
 protected:
+    bool canBePerformedAsScaleShift() const;
+
     void setType(Type type) {
         this->type = type;
     }

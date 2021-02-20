@@ -68,10 +68,10 @@ struct jit_uni_quantize_kernel {
     jit_quantize_params jqp_;
 };
 
-class MKLDNNQuantizeNode : public MKLDNNNode {
+class MKLDNNFakeQuantizeNode : public MKLDNNNode {
 public:
-    MKLDNNQuantizeNode(const std::shared_ptr<ngraph::Node>& op, const mkldnn::engine& eng, MKLDNNWeightsSharing::Ptr &cache);
-    ~MKLDNNQuantizeNode() override = default;
+    MKLDNNFakeQuantizeNode(const std::shared_ptr<ngraph::Node>& op, const mkldnn::engine& eng, MKLDNNWeightsSharing::Ptr &cache);
+    ~MKLDNNFakeQuantizeNode() override = default;
 
     void initSupportedPrimitiveDescriptors() override;
     void getSupportedDescriptors() override;
@@ -113,7 +113,7 @@ public:
 
     void appendPostOps(mkldnn::post_ops& ops) override;
 
-    static bool isNeedToDecompose(const std::shared_ptr<const ngraph::Node>& node);
+    static bool isSupportedOperation(const std::shared_ptr<const ngraph::Node>& op, std::string& errorMessage) noexcept;
 
 private:
     void init() override;
@@ -158,6 +158,8 @@ private:
     jit_quantize_params jqp = {};
 
     std::shared_ptr<jit_uni_quantize_kernel> quantize_kernel = nullptr;
+
+    std::string errorPrefix;
 };
 
 }  // namespace MKLDNNPlugin
