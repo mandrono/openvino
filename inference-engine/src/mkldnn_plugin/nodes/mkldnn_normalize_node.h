@@ -71,10 +71,10 @@ struct jit_uni_normalize_kernel {
     const mkldnn_primitive_attr &attr_;
 };
 
-class MKLDNNNormalizeNode : public MKLDNNNode {
+class MKLDNNNormalizeL2Node : public MKLDNNNode {
 public:
-    MKLDNNNormalizeNode(const std::shared_ptr<ngraph::Node>& op, const mkldnn::engine& eng, MKLDNNWeightsSharing::Ptr &cache);
-    ~MKLDNNNormalizeNode() override = default;
+    MKLDNNNormalizeL2Node(const std::shared_ptr<ngraph::Node>& op, const mkldnn::engine& eng, MKLDNNWeightsSharing::Ptr &cache);
+    ~MKLDNNNormalizeL2Node() override = default;
 
     void getSupportedDescriptors() override;
     void initSupportedPrimitiveDescriptors() override;
@@ -86,6 +86,7 @@ public:
     }
 
     static bool isSupportedOperation(const std::shared_ptr<ngraph::Node>& op, std::string& errorMessage) noexcept;
+    bool canFuse(const MKLDNNNodePtr& node) const override;
 
 private:
     template<typename T>
@@ -130,7 +131,7 @@ private:
     static const size_t DATA = 0;
     static const size_t AXES = 1;
 
-    static bool isSupportedAxes(const std::vector<size_t> &axes, const ngraph::Shape &dataDims);
+    std::string errorPrefix;
 };
 
 }  // namespace MKLDNNPlugin

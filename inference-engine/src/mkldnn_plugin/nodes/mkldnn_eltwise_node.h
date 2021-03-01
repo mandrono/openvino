@@ -73,7 +73,7 @@ public:
 
     bool isWithBroadcast();
 
-    bool canFuse(const MKLDNNNodePtr& node) const;
+    bool canFuse(const MKLDNNNodePtr& node) const override;
 
     size_t getOpInputsNum() const;
     mkldnn::algorithm getMKLDNNAlgorithm() const { return mkldnnAlgorithm; }

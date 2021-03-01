@@ -248,4 +248,64 @@ const auto fusingSumEluFQ = fusingSpecificParams{std::make_shared<postNodesMgr>(
             return ngraph::builder::makeFakeQuantize(inpNode, localPrc, 256, newShape);
         }, "FakeQuantize(PerTensor)"}}), {"Add", "Elu", "FakeQuantize"}};
 
+const auto fusingMultiplyPerTensor = fusingSpecificParams{std::make_shared<postNodesMgr>(std::vector<postNodeBuilder>{
+        {[](std::shared_ptr<ngraph::Node> inpNode, const ngraph::element::Type& ngPrc, ngraph::ParameterVector& params){
+            ngraph::Shape secondMultInShape(1, 1);
+            auto secondMultInput = ngraph::builder::makeConstant(ngPrc, ngraph::Shape(secondMultInShape), std::vector<float>{}, true);
+            return std::make_shared<ngraph::op::v1::Multiply>(inpNode, secondMultInput);
+        }, "Multiply(PerTensor)"}}), {"Multiply"}};
+
+const auto fusingMultiplyPerChannel = fusingSpecificParams{std::make_shared<postNodesMgr>(std::vector<postNodeBuilder>{
+        {[](std::shared_ptr<ngraph::Node> inpNode, const ngraph::element::Type& ngPrc, ngraph::ParameterVector& params){
+            ngraph::Shape secondMultInShape(inpNode->get_shape().size(), 1);
+            secondMultInShape[1] = inpNode->get_shape()[1];
+            auto secondMultInput = ngraph::builder::makeConstant(ngPrc, ngraph::Shape(secondMultInShape), std::vector<float>{}, true);
+            return std::make_shared<ngraph::opset1::Multiply>(inpNode, secondMultInput);
+        }, "Multiply(PerChannel)"}}), {"Multiply"}};
+
+const auto fusingAddPerTensor = fusingSpecificParams{std::make_shared<postNodesMgr>(std::vector<postNodeBuilder>{
+        {[](std::shared_ptr<ngraph::Node> inpNode, const ngraph::element::Type& ngPrc, ngraph::ParameterVector& params){
+            ngraph::Shape secondMultInShape(1, 1);
+            auto secondMultInput = ngraph::builder::makeConstant(ngPrc, ngraph::Shape(secondMultInShape), std::vector<float>{}, true);
+            return std::make_shared<ngraph::opset1::Add>(inpNode, secondMultInput);
+        }, "Add(PerTensor)"}}), {"Add"}};
+
+const auto fusingAddPerChannel = fusingSpecificParams{std::make_shared<postNodesMgr>(std::vector<postNodeBuilder>{
+        {[](std::shared_ptr<ngraph::Node> inpNode, const ngraph::element::Type& ngPrc, ngraph::ParameterVector& params){
+            ngraph::Shape secondMultInShape(inpNode->get_shape().size(), 1);
+            secondMultInShape[1] = inpNode->get_shape()[1];
+            auto secondMultInput = ngraph::builder::makeConstant(ngPrc, ngraph::Shape(secondMultInShape), std::vector<float>{}, true);
+            return std::make_shared<ngraph::opset1::Add>(inpNode, secondMultInput);
+        }, "Add(PerChannel)"}}), {"Add"}};
+
+const auto fusingSubtractPerTensor = fusingSpecificParams{std::make_shared<postNodesMgr>(std::vector<postNodeBuilder>{
+        {[](std::shared_ptr<ngraph::Node> inpNode, const ngraph::element::Type& ngPrc, ngraph::ParameterVector& params){
+            ngraph::Shape secondMultInShape(1, 1);
+            auto secondMultInput = ngraph::builder::makeConstant(ngPrc, ngraph::Shape(secondMultInShape), std::vector<float>{}, true);
+            return std::make_shared<ngraph::opset1::Subtract>(inpNode, secondMultInput);
+        }, "Subtract(PerTensor)"}}), {"Subtract"}};
+
+const auto fusingSubtractPerChannel = fusingSpecificParams{std::make_shared<postNodesMgr>(std::vector<postNodeBuilder>{
+        {[](std::shared_ptr<ngraph::Node> inpNode, const ngraph::element::Type& ngPrc, ngraph::ParameterVector& params){
+            ngraph::Shape secondMultInShape(inpNode->get_shape().size(), 1);
+            secondMultInShape[1] = inpNode->get_shape()[1];
+            auto secondMultInput = ngraph::builder::makeConstant(ngPrc, ngraph::Shape(secondMultInShape), std::vector<float>{}, true);
+            return std::make_shared<ngraph::opset1::Subtract>(inpNode, secondMultInput);
+        }, "Subtract(PerChannel)"}}), {"Subtract"}};
+
+const auto fusingDividePerTensor = fusingSpecificParams{std::make_shared<postNodesMgr>(std::vector<postNodeBuilder>{
+        {[](std::shared_ptr<ngraph::Node> inpNode, const ngraph::element::Type& ngPrc, ngraph::ParameterVector& params){
+            ngraph::Shape secondMultInShape(1, 1);
+            auto secondMultInput = ngraph::builder::makeConstant(ngPrc, ngraph::Shape(secondMultInShape), std::vector<float>{}, true);
+            return std::make_shared<ngraph::opset1::Divide>(inpNode, secondMultInput);
+        }, "Divide(PerTensor)"}}), {"Divide"}};
+
+const auto fusingDividePerChannel = fusingSpecificParams{std::make_shared<postNodesMgr>(std::vector<postNodeBuilder>{
+        {[](std::shared_ptr<ngraph::Node> inpNode, const ngraph::element::Type& ngPrc, ngraph::ParameterVector& params){
+            ngraph::Shape secondMultInShape(inpNode->get_shape().size(), 1);
+            secondMultInShape[1] = inpNode->get_shape()[1];
+            auto secondMultInput = ngraph::builder::makeConstant(ngPrc, ngraph::Shape(secondMultInShape), std::vector<float>{}, true);
+            return std::make_shared<ngraph::opset1::Divide>(inpNode, secondMultInput);
+        }, "Divide(PerChannel)"}}), {"Divide"}};
+
 } // namespace CPUTestUtils

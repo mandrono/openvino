@@ -9,6 +9,8 @@
 #include "mkldnn_quantize_node.h"
 #include "mkldnn_eltwise_node.h"
 #include "utils/bfloat16.hpp"
+#include "utils/general_utils.h"
+#include <mkldnn_extension_utils.h>
 #include "emitters/jit_bf16_emitters.hpp"
 #include "mkldnn_extension_utils.h"
 #include <cpu/x64/jit_uni_eltwise_injector.hpp>
@@ -641,10 +643,11 @@ private:
     }
 };
 
-MKLDNNNormalizeNode::MKLDNNNormalizeNode(const std::shared_ptr<ngraph::Node>& op, const mkldnn::engine& eng, MKLDNNWeightsSharing::Ptr &cache) :
+MKLDNNNormalizeL2Node::MKLDNNNormalizeL2Node(const std::shared_ptr<ngraph::Node>& op, const mkldnn::engine& eng, MKLDNNWeightsSharing::Ptr &cache) :
         MKLDNNNode(op, eng, cache), src_data_size(0lu), dst_data_size(0lu), input_prec(Precision::UNSPECIFIED), output_prec(Precision::UNSPECIFIED) {
     std::string errorMessage;
     if (isSupportedOperation(op, errorMessage)) {
+        errorPrefix = "NormalizeL2 node with name '" + getName() + "' ";
         eps = std::dynamic_pointer_cast<const ngraph::op::v0::NormalizeL2>(op)->get_eps();
         across_spatial = ngraph::shape_size(op->get_input_shape(AXES)) != 1;
     } else {
@@ -652,43 +655,43 @@ MKLDNNNormalizeNode::MKLDNNNormalizeNode(const std::shared_ptr<ngraph::Node>& op
     }
 }
 
-bool MKLDNNNormalizeNode::isSupportedAxes(const std::vector<size_t> &axes, const ngraph::Shape &dataDims) {
-    if (axes.size() == 1 && axes[0] == 1) {
-        return true;
-    } else if (axes.size() == dataDims.size() - 1) {
-        for (size_t i = 0; i < axes.size(); i++) {
-            if (axes[i] != i + 1)
-                return false;
-        }
-        return true;
-    }
-    return false;
-}
-
-bool MKLDNNNormalizeNode::isSupportedOperation(const std::shared_ptr<ngraph::Node>& op, std::string& errorMessage) noexcept {
+bool MKLDNNNormalizeL2Node::isSupportedOperation(const std::shared_ptr<ngraph::Node>& op, std::string& errorMessage) noexcept {
     try {
         const auto norm = std::dynamic_pointer_cast<const ngraph::op::v0::NormalizeL2>(op);
         if (!norm) {
             errorMessage = "CPU plug-in supports NormalizeL2 node only from opset1. Node name: " + op->get_friendly_name();
             return false;
         }
+        std::string errorPrefix = "NormalizeL2 node with name '" + op->get_friendly_name() + "' ";
         const auto dataDims = norm->get_input_shape(DATA);
         if (dataDims.size() < 2 && dataDims.size() > 4) {
-            errorMessage = "NormalizeL2 node with name '" + op->get_friendly_name() + "' doesn't support 'data' input with rank: " +
-                            std::to_string(dataDims.size());
+            errorMessage = errorPrefix + "doesn't support 'data' input with rank: " + std::to_string(dataDims.size());
             return false;
         }
         const auto axesNode = std::dynamic_pointer_cast<const ngraph::op::v0::Constant>(norm->get_input_node_shared_ptr(AXES));
         if (!axesNode) {
-            errorMessage = "NormalizeL2 node with name '" + op->get_friendly_name() + "' supports only constant 'axes' input";
+            errorMessage = errorPrefix + "supports only constant 'axes' input";
             return false;
         }
+
+        const auto isSupportedAxes = [](const std::vector<size_t> &axes, const ngraph::Shape &dataDims) {
+            if (axes.size() == 1 && axes[0] == 1) {
+                return true;
+            } else if (axes.size() == dataDims.size() - 1) {
+                for (size_t i = 0; i < axes.size(); i++) {
+                    if (axes[i] != i + 1)
+                        return false;
+                }
+                return true;
+            }
+            return false;
+        };
         if (!isSupportedAxes(axesNode->cast_vector<size_t>(), dataDims)) {
-            errorMessage = "NormalizeL2 node with name '" + op->get_friendly_name() + "' supports only per channel or per channel and per spatial reduction";
+            errorMessage = errorPrefix + "supports only per channel or per channel and per spatial reduction";
             return false;
         }
         if (norm->get_eps_mode() != ngraph::op::EpsMode::ADD) {
-            errorMessage = "NormalizeL2 node with name '" + op->get_friendly_name() + "' supports only eps_mode = add";
+            errorMessage = errorPrefix + "supports only eps_mode = add";
             return false;
         }
     } catch (...) {
@@ -697,22 +700,21 @@ bool MKLDNNNormalizeNode::isSupportedOperation(const std::shared_ptr<ngraph::Nod
     return true;
 }
 
-void MKLDNNNormalizeNode::getSupportedDescriptors() {
+void MKLDNNNormalizeL2Node::getSupportedDescriptors() {
     if (!descs.empty())
         return;
 
-    std::string errPrefix = "Normalize node with name '" + getName() + "' ";
     if (getParentEdges().size() != 2)
-        THROW_IE_EXCEPTION << errPrefix << " has incorrect number of input edges: " << getParentEdges().size();
+        THROW_IE_EXCEPTION << errorPrefix << " has incorrect number of input edges: " << getParentEdges().size();
     if (getChildEdges().empty())
-        THROW_IE_EXCEPTION << errPrefix << " has incorrect number of output edges: " << getChildEdges().size();
+        THROW_IE_EXCEPTION << errorPrefix << " has incorrect number of output edges: " << getChildEdges().size();
 
     if (getParentEdgeAt(0)->getDims().ndims() > 4 || getParentEdgeAt(0)->getDims().ndims() < 2) {
-        THROW_IE_EXCEPTION << errPrefix << "has invalid input shape. Normalize supports from 2D to 4D blobs.";
+        THROW_IE_EXCEPTION << errorPrefix << "has invalid input shape. Normalize supports from 2D to 4D blobs.";
     }
 }
 
-void MKLDNNNormalizeNode::initSupportedPrimitiveDescriptors() {
+void MKLDNNNormalizeL2Node::initSupportedPrimitiveDescriptors() {
     if (!supportedPrimitiveDescriptors.empty())
         return;
 
@@ -732,19 +734,11 @@ void MKLDNNNormalizeNode::initSupportedPrimitiveDescriptors() {
             inputPrecision = outputPrecision = Precision::BF16;
     }
 
-    auto isOneOf = [&](Precision precision, std::vector<Precision> precisions) {
-        for (auto p : precisions) {
-            if (precision == p) {
-                return true;
-            }
-        }
-        return false;
-    };
-    if (!isOneOf(inputPrecision, {Precision::FP32, Precision::BF16, Precision::I8, Precision::U8})) {
-        THROW_IE_EXCEPTION << "Unsupported input precision. " << getName();
+    if (!one_of(inputPrecision, Precision::FP32, Precision::BF16, Precision::I8, Precision::U8)) {
+        THROW_IE_EXCEPTION << errorPrefix << "has unsupported input precision. " << getName();
     }
-    if (!isOneOf(outputPrecision, {Precision::FP32, Precision::BF16, Precision::I8, Precision::U8})) {
-        THROW_IE_EXCEPTION << "Unsupported output precision. " << getName();
+    if (!one_of(outputPrecision, Precision::FP32, Precision::BF16, Precision::I8, Precision::U8)) {
+        THROW_IE_EXCEPTION << errorPrefix << "has unsupported output precision. " << getName();
     }
 
     auto inputDataType = MKLDNNExtensionUtils::IEPrecisionToDataType(inputPrecision);
@@ -786,7 +780,32 @@ void MKLDNNNormalizeNode::initSupportedPrimitiveDescriptors() {
     pushDesc(MKLDNNMemory::GetPlainFormat(getChildEdgeAt(DATA)->getDims()));
 }
 
-void MKLDNNNormalizeNode::setPostOps(mkldnn::primitive_attr &attr, bool initWeights) {
+bool MKLDNNNormalizeL2Node::canFuse(const MKLDNNNodePtr& node) const {
+    auto isConvertedToScaleShift = [](MKLDNNNodePtr node) {
+        return one_of(node->getAlgorithm(), EltwiseAdd, EltwiseMultiply, EltwiseSubtract, EltwiseDivide, EltwisePrelu) &&
+               node->getParentEdgeAt(1)->getParent()->isConstant() &&
+               MKLDNNExtensionUtils::isPerTensorOrPerChannelBroadcastable(node->getParentEdgeAt(0)->getDims().ToSizeVector(),
+                                                                          node->getParentEdgeAt(1)->getDims().ToSizeVector());
+    };
+
+    if (node->getType() == Quantize) {
+        auto* quantizeNode = dynamic_cast<MKLDNNQuantizeNode*>(node.get());
+        if (quantizeNode == nullptr)
+            THROW_IE_EXCEPTION << "Cannot get quantize layer " << node->getName();
+        return !quantizeNode->isBinarization();
+    } else if (node->getType() == Eltwise) {
+        return one_of(node->getAlgorithm(), EltwiseRelu, EltwiseGelu, EltwiseElu, EltwiseSigmoid, EltwiseBoundedRelu, EltwiseClamp, EltwiseTanh,
+                                            EltwiseSwish, EltwiseHswish, EltwiseMish, EltwiseHsigmoid, EltwiseRoundHalfToEven,
+                                            EltwiseRoundHalfAwayFromZero, EltwiseLinear, EltwiseAbs, EltwiseSquare, EltwiseSqrt) ||
+                isConvertedToScaleShift(node);
+                // TODO [NM]: implemented after enabling MulAdd operation
+                // ((eltwiseNode->getOpType() == MulAdd && eltwiseNode->getCnnLayer()->blobs.size() == 2)
+    }
+
+    return false;
+}
+
+void MKLDNNNormalizeL2Node::setPostOps(mkldnn::primitive_attr &attr, bool initWeights) {
     mkldnn::post_ops ops;
 
     for (auto &node : fusedWith) {
@@ -808,15 +827,15 @@ void MKLDNNNormalizeNode::setPostOps(mkldnn::primitive_attr &attr, bool initWeig
     attr.set_post_ops(ops);
 }
 
-void MKLDNNNormalizeNode::createPrimitive() {
+void MKLDNNNormalizeL2Node::createPrimitive() {
     auto& dstMemPtr = getChildEdgeAt(DATA)->getMemoryPtr();
     auto& srcMemPtr = getParentEdgeAt(DATA)->getMemoryPtr();
     if (!dstMemPtr || !dstMemPtr->GetPrimitivePtr())
-        THROW_IE_EXCEPTION << "Destination memory didn't allocate.";
+        THROW_IE_EXCEPTION << errorPrefix << "has didn't allocated destination memory";
     if (!srcMemPtr || !srcMemPtr->GetPrimitivePtr())
-        THROW_IE_EXCEPTION << "Input memory didn't allocate.";
+        THROW_IE_EXCEPTION << errorPrefix << "has didn't allocated input memory";
     if (getSelectedPrimitiveDescriptor() == nullptr)
-        THROW_IE_EXCEPTION << "Preferable primitive descriptor is not set.";
+        THROW_IE_EXCEPTION << errorPrefix << "has nullable preferable primitive descriptor";
 
     auto selectedPD = getSelectedPrimitiveDescriptor();
     jcp.src_dt = MKLDNNExtensionUtils::IEPrecisionToDataType(selectedPD->getConfig().inConfs[0].desc.getPrecision());
@@ -873,7 +892,7 @@ void MKLDNNNormalizeNode::createPrimitive() {
 namespace {
 
 struct NormalizeContext {
-    MKLDNNNormalizeNode &node;
+    MKLDNNNormalizeL2Node &node;
     const uint8_t *src;
     uint8_t *dst;
     const SizeVector& dims;
@@ -882,7 +901,7 @@ struct NormalizeContext {
 }   // namespace
 
 template<typename T>
-struct MKLDNNNormalizeNode::NormalizeExecute {
+struct MKLDNNNormalizeL2Node::NormalizeExecute {
     using src_t = typename std::tuple_element<0, T>::type;
     using dst_t = typename std::tuple_element<1, T>::type;
 
@@ -893,7 +912,7 @@ struct MKLDNNNormalizeNode::NormalizeExecute {
     }
 };
 
-void MKLDNNNormalizeNode::execute(mkldnn::stream strm) {
+void MKLDNNNormalizeL2Node::execute(mkldnn::stream strm) {
     auto &srcMemPtr = getParentEdgeAt(DATA)->getMemoryPtr();
     auto &dstMemPtr = getChildEdgeAt(DATA)->getMemoryPtr();
     const uint8_t *src_ptr = reinterpret_cast<const uint8_t*>(srcMemPtr->GetPtr());
@@ -922,7 +941,7 @@ void MKLDNNNormalizeNode::execute(mkldnn::stream strm) {
 }
 
 template <typename in_data_t, typename out_data_t>
-void MKLDNNNormalizeNode::normalize_nchw(const in_data_t* src_data, out_data_t* dst_data, const SizeVector& dims) {
+void MKLDNNNormalizeL2Node::normalize_nchw(const in_data_t* src_data, out_data_t* dst_data, const SizeVector& dims) {
     size_t blk_size = 1;  // elt in vmm
     if (mayiuse(cpu::x64::avx512_common)) {
         blk_size = 16;
@@ -1027,7 +1046,7 @@ void MKLDNNNormalizeNode::normalize_nchw(const in_data_t* src_data, out_data_t* 
 }
 
 template <typename in_data_t, typename out_data_t>
-void MKLDNNNormalizeNode::normalize_nchw_ref(const in_data_t* src_data, out_data_t* dst_data, const SizeVector& dims) {
+void MKLDNNNormalizeL2Node::normalize_nchw_ref(const in_data_t* src_data, out_data_t* dst_data, const SizeVector& dims) {
     size_t dims_size = dims.size();
     size_t W = (dims_size > 3) ? dims[3] : 1lu;
     size_t H = (dims_size > 2) ? dims[2] : 1lu;
@@ -1104,7 +1123,7 @@ void MKLDNNNormalizeNode::normalize_nchw_ref(const in_data_t* src_data, out_data
 }
 
 template <typename in_data_t, typename out_data_t>
-void MKLDNNNormalizeNode::normalize_nhwc(const in_data_t* src_data, out_data_t* dst_data, const SizeVector& dims) {
+void MKLDNNNormalizeL2Node::normalize_nhwc(const in_data_t* src_data, out_data_t* dst_data, const SizeVector& dims) {
     size_t blk_size = 1;  // elt in vmm
     if (mayiuse(cpu::x64::avx512_common)) {
         blk_size = 16;
@@ -1198,7 +1217,7 @@ void MKLDNNNormalizeNode::normalize_nhwc(const in_data_t* src_data, out_data_t* 
 }
 
 template <typename in_data_t, typename out_data_t>
-void MKLDNNNormalizeNode::normalize_blk(const in_data_t* src_data, out_data_t* dst_data, const SizeVector& dims) {
+void MKLDNNNormalizeL2Node::normalize_blk(const in_data_t* src_data, out_data_t* dst_data, const SizeVector& dims) {
     size_t blk_size = 1;  // channel blk for memory layout
     if (mayiuse(cpu::x64::avx512_common)) {
         blk_size = 16;
@@ -1298,7 +1317,7 @@ void MKLDNNNormalizeNode::normalize_blk(const in_data_t* src_data, out_data_t* d
 }
 
 template <typename in_data_t, typename out_data_t>
-void MKLDNNNormalizeNode::normalize_function(const in_data_t* src_data, out_data_t* dst_data, const SizeVector& dims) {
+void MKLDNNNormalizeL2Node::normalize_function(const in_data_t* src_data, out_data_t* dst_data, const SizeVector& dims) {
     if (mayiuse(cpu::x64::sse41) && normalize_modulo_kernel && normalize_kernel) {
         if (jcp.is_nchw) {
             normalize_nchw(src_data, dst_data, dims);
@@ -1307,18 +1326,18 @@ void MKLDNNNormalizeNode::normalize_function(const in_data_t* src_data, out_data
         } else if (jcp.is_blk) {
             normalize_blk(src_data, dst_data, dims);
         } else {
-            THROW_IE_EXCEPTION << "The selected layout is not supported.";
+            THROW_IE_EXCEPTION << errorPrefix << "has selected layout which is not supported.";
         }
     } else {
         if (jcp.is_nchw) {
             normalize_nchw_ref(src_data, dst_data, dims);
         } else {
-            THROW_IE_EXCEPTION << "Only support plain layout on machine w/o sse42.";
+            THROW_IE_EXCEPTION << errorPrefix << "supports only plain layout on machine w/o sse42.";
         }
     }
 }
 
-inline void MKLDNNNormalizeNode::apply_post_ops_scalar(float &dst_value, int index_c) {
+inline void MKLDNNNormalizeL2Node::apply_post_ops_scalar(float &dst_value, int index_c) {
     const auto &p = (*attr.get()).post_ops_;
     int eltwise_inj_idx = 0;
     int depthwise_inj_idx = 0;
@@ -1359,8 +1378,8 @@ inline void MKLDNNNormalizeNode::apply_post_ops_scalar(float &dst_value, int ind
     }
 }
 
-bool MKLDNNNormalizeNode::created() const {
-    return getType() == Normalize;
+bool MKLDNNNormalizeL2Node::created() const {
+    return getType() == NormalizeL2;
 }
 
-REG_MKLDNN_PRIM_FOR(MKLDNNNormalizeNode, Normalize);
+REG_MKLDNN_PRIM_FOR(MKLDNNNormalizeL2Node, NormalizeL2);

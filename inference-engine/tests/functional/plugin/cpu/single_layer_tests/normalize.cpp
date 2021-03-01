@@ -67,95 +67,25 @@ TEST_P(NormalizeL2LayerCPUTest, CompareWithRefs) {
     SKIP_IF_CURRENT_TEST_IS_DISABLED()
 
     Run();
-    CheckPluginRelatedResults(executableNetwork, "Normalize");
+    CheckPluginRelatedResults(executableNetwork, "NormalizeL2");
 }
 
 namespace {
 
 /* ============= Common params ============= */
-const auto fusingMultiplySharedChannel = fusingSpecificParams{std::make_shared<postNodesMgr>(std::vector<postNodeBuilder>{
-            {[](std::shared_ptr<ngraph::Node> inpNode, const ngraph::element::Type& ngPrc, ngraph::ParameterVector& params){
-                SizeVector secondMultInShape(1, 1);
-                auto secondMultInput = builder::makeConstant(ngPrc, Shape(secondMultInShape), std::vector<float>{}, true);
-                return std::make_shared<op::v1::Multiply>(inpNode, secondMultInput);
-            }, "Multiply(SharedChannel)"}}), {"Multiply"}};
-
-const auto fusingMultiplyNoSharedChannel = fusingSpecificParams{std::make_shared<postNodesMgr>(std::vector<postNodeBuilder>{
-            {[](std::shared_ptr<ngraph::Node> inpNode, const ngraph::element::Type& ngPrc, ngraph::ParameterVector& params){
-                SizeVector secondMultInShape(inpNode->get_shape().size(), 1);
-                secondMultInShape[1] = inpNode->get_shape()[1];
-                auto secondMultInput = builder::makeConstant(ngPrc, Shape(secondMultInShape), std::vector<float>{}, true);
-                return std::make_shared<op::v1::Multiply>(inpNode, secondMultInput);
-            }, "Multiply(NoSharedChannel)"}}), {"Multiply"}};
-
-const auto fusingAddSharedChannel = fusingSpecificParams{std::make_shared<postNodesMgr>(std::vector<postNodeBuilder>{
-            {[](std::shared_ptr<ngraph::Node> inpNode, const ngraph::element::Type& ngPrc, ngraph::ParameterVector& params){
-                SizeVector secondMultInShape(1, 1);
-                auto secondMultInput = builder::makeConstant(ngPrc, Shape(secondMultInShape), std::vector<float>{}, true);
-                return std::make_shared<op::v1::Add>(inpNode, secondMultInput);
-            }, "Add(SharedChannel)"}}), {"Add"}};
-
-const auto fusingAddNoSharedChannel = fusingSpecificParams{std::make_shared<postNodesMgr>(std::vector<postNodeBuilder>{
-            {[](std::shared_ptr<ngraph::Node> inpNode, const ngraph::element::Type& ngPrc, ngraph::ParameterVector& params){
-                SizeVector secondMultInShape(inpNode->get_shape().size(), 1);
-                secondMultInShape[1] = inpNode->get_shape()[1];
-                auto secondMultInput = builder::makeConstant(ngPrc, Shape(secondMultInShape), std::vector<float>{}, true);
-                return std::make_shared<op::v1::Add>(inpNode, secondMultInput);
-            }, "Add(NoSharedChannel)"}}), {"Add"}};
-
-const auto fusingSubtractSharedChannel = fusingSpecificParams{std::make_shared<postNodesMgr>(std::vector<postNodeBuilder>{
-            {[](std::shared_ptr<ngraph::Node> inpNode, const ngraph::element::Type& ngPrc, ngraph::ParameterVector& params){
-                SizeVector secondMultInShape(1, 1);
-                auto secondMultInput = builder::makeConstant(ngPrc, Shape(secondMultInShape), std::vector<float>{}, true);
-                return std::make_shared<op::v1::Subtract>(inpNode, secondMultInput);
-            }, "Subtract(SharedChannel)"}}), {"Subtract"}};
-
-const auto fusingSubtractNoSharedChannel = fusingSpecificParams{std::make_shared<postNodesMgr>(std::vector<postNodeBuilder>{
-            {[](std::shared_ptr<ngraph::Node> inpNode, const ngraph::element::Type& ngPrc, ngraph::ParameterVector& params){
-                SizeVector secondMultInShape(inpNode->get_shape().size(), 1);
-                secondMultInShape[1] = inpNode->get_shape()[1];
-                auto secondMultInput = builder::makeConstant(ngPrc, Shape(secondMultInShape), std::vector<float>{}, true);
-                return std::make_shared<op::v1::Subtract>(inpNode, secondMultInput);
-            }, "Subtract(NoSharedChannel)"}}), {"Subtract"}};
-
-const auto fusingDivideSharedChannel = fusingSpecificParams{std::make_shared<postNodesMgr>(std::vector<postNodeBuilder>{
-            {[](std::shared_ptr<ngraph::Node> inpNode, const ngraph::element::Type& ngPrc, ngraph::ParameterVector& params){
-                SizeVector secondMultInShape(1, 1);
-                auto secondMultInput = builder::makeConstant(ngPrc, Shape(secondMultInShape), std::vector<float>{}, true);
-                return std::make_shared<op::v1::Divide>(inpNode, secondMultInput);
-            }, "Divide(SharedChannel)"}}), {"Divide"}};
-
-const auto fusingDivideNoSharedChannel = fusingSpecificParams{std::make_shared<postNodesMgr>(std::vector<postNodeBuilder>{
-            {[](std::shared_ptr<ngraph::Node> inpNode, const ngraph::element::Type& ngPrc, ngraph::ParameterVector& params){
-                SizeVector secondMultInShape(inpNode->get_shape().size(), 1);
-                secondMultInShape[1] = inpNode->get_shape()[1];
-                auto secondMultInput = builder::makeConstant(ngPrc, Shape(secondMultInShape), std::vector<float>{}, true);
-                return std::make_shared<op::v1::Divide>(inpNode, secondMultInput);
-            }, "Divide(NoSharedChannel)"}}), {"Divide"}};
-
 std::vector<fusingSpecificParams> fusingParamsSet {
         emptyFusingSpec,
-        fusingMultiplySharedChannel,
-        fusingMultiplyNoSharedChannel,
-        fusingAddSharedChannel,
-        fusingAddNoSharedChannel,
-        fusingSubtractSharedChannel,
-        fusingSubtractNoSharedChannel,
-        fusingDivideSharedChannel,
-        fusingDivideNoSharedChannel,
+        fusingMultiplyPerTensor,
+        fusingMultiplyPerChannel,
+        fusingAddPerTensor,
+        fusingAddPerChannel,
+        fusingSubtractPerTensor,
+        fusingSubtractPerChannel,
+        fusingDividePerTensor,
+        fusingDividePerChannel,
         fusingPReluPerChannel,
         fusingPReluPerTensor,
-        fusingRelu,
-        fusingElu,
-        fusingGelu,
-        fusingSigmoid,
-        fusingClamp,
-        fusingTanh,
-        fusingSwish,
-        fusingHSwish,
-        fusingMish,
-        fusingHSigmoid,
-        fusingAbs
+        fusingRelu
 };
 
 const float epsilon = 1e-4f;
