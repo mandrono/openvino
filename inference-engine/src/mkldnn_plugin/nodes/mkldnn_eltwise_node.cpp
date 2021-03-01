@@ -927,6 +927,17 @@ MKLDNNEltwiseNode::MKLDNNEltwiseNode(const std::shared_ptr<ngraph::Node>& op, co
         MKLDNNNode(op, eng, cache) {
     if (initializers.find(op->get_type_info()) != initializers.end()) {
         initializers[op->get_type_info()](op, *this);
+
+        std::shared_ptr<const ngraph::opset1::Constant> secondIn;
+        const auto isConstantBroadcastbleSecondInput = [&](const std::shared_ptr<ngraph::Node>& op) {
+            secondIn = std::dynamic_pointer_cast<const ngraph::opset1::Constant>(op->get_input_node_shared_ptr(1));
+            return secondIn != nullptr && MKLDNNExtensionUtils::isPerTensorOrPerChannelBroadcastable(op->get_input_shape(0), op->get_input_shape(1));
+        };
+        if (one_of(getAlgorithm(), EltwiseMultiply, EltwiseDivide, EltwisePrelu) && isConstantBroadcastbleSecondInput(op)) {
+            scales = secondIn->cast_vector<float>();
+        } else if (one_of(getAlgorithm(), EltwiseAdd, EltwiseSubtract) && isConstantBroadcastbleSecondInput(op)) {
+            shifts = secondIn->cast_vector<float>();
+        }
     } else {
         IE_THROW(NotImplemented)
             << "CPU Eltwise node doesn't support ngraph operation " << op->get_type_name() << " with name " << op->get_friendly_name();

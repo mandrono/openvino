@@ -167,6 +167,7 @@ static const InferenceEngine::details::caseless_unordered_map<std::string, Type>
 //        { "Memory", MemoryOutput },  // for construction from layer ctor
         { "Convert", Convert },
         { "MVN", MVN},
+<<<<<<< HEAD
         { "NormalizeL2", NormalizeL2},
         { "ScatterUpdate", ScatterUpdate},
         { "ScatterElementsUpdate", ScatterElementsUpdate},
@@ -184,6 +185,25 @@ static const InferenceEngine::details::caseless_unordered_map<std::string, Type>
         { "ReduceLogSum", Reduce},
         { "ReduceLogSumExp", Reduce},
         { "ReduceSumSquare", Reduce}
+=======
+       { "NormalizeL2", NormalizeL2},
+//        { "ScatterUpdate", ScatterUpdate},
+//        { "ScatterElementsUpdate", ScatterElementsUpdate},
+//        { "ScatterNDUpdate", ScatterNDUpdate},
+//        { "Interpolate", Interpolate},
+//        { "ReduceAnd", ReduceAnd},
+//        { "ReduceL1", ReduceL1},
+//        { "ReduceL2", ReduceL2},
+//        { "ReduceLogSum", ReduceLogSum},
+//        { "ReduceLogSumExp", ReduceLogSumExp},
+//        { "ReduceMax", ReduceMax},
+//        { "ReduceMean", ReduceMean},
+//        { "ReduceMin", ReduceMin},
+//        { "ReduceOr", ReduceOr},
+//        { "ReduceProd", ReduceProd},
+//        { "ReduceSum", ReduceSum},
+//        { "ReduceSumSquare", ReduceSumSquare},
+>>>>>>> [CPU] NormalizeL2 node migration on nGraph (#13)
 };
 
 Type TypeFromName(const std::string type) {
