@@ -169,7 +169,7 @@ static const InferenceEngine::details::caseless_unordered_map<std::string, Type>
 //        { "ROIPooling", ROIPooling },
 //        { "BatchNormalization", BatchNormalization },
 //        { "Flatten", Flatten },
-//        { "Pad", Pad },
+        { "Pad", Pad },
         { "Transpose", Transpose },
 //        { "Copy", Copy },
 //        { "LSTMCell", RNNCell },
