@@ -1387,6 +1387,7 @@ void MKLDNNMVNNode::mvn_blk(const uint8_t* src_data, uint8_t* dst_data, const Si
     }
 }
 
+<<<<<<< HEAD
 bool MKLDNNMVNNode::canFuse(const MKLDNNNodePtr& node) const {
     if (!mayiuse(cpu::x64::sse41)) {
         return false;
@@ -1395,6 +1396,8 @@ bool MKLDNNMVNNode::canFuse(const MKLDNNNodePtr& node) const {
    return canFuseSimpleOperation(node);
 }
 
+=======
+>>>>>>> [CPU] Permute node migration on nGraph. (#15)
 bool MKLDNNMVNNode::created() const {
     return getType() == MVN;
 }
