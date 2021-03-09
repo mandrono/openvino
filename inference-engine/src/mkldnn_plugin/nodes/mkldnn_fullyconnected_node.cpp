@@ -5,8 +5,8 @@
 #include "mkldnn_fullyconnected_node.h"
 #include "mkldnn_eltwise_node.h"
 #include "mkldnn_quantize_node.h"
+#include "ngraph_transformations/op/fully_connected.hpp"
 
-#include <legacy/ie_layers.h>
 #include <string>
 #include <vector>
 #include <mkldnn_extension_utils.h>
@@ -19,18 +19,18 @@ using namespace InferenceEngine;
 
 MKLDNNFullyConnectedNode::MKLDNNFullyConnectedNode(const std::shared_ptr<ngraph::Node>& op, const mkldnn::engine& eng, MKLDNNWeightsSharing::Ptr &cache)
         : MKLDNNNode(op, eng, cache), withBiases(false), baseInputsNumber(0) {
-//    internalBlobDesc.emplace_back([&](primitive_desc_iterator &primitive_desc_it, size_t idx) -> MKLDNNMemoryDesc {
-//        return MKLDNNMemoryDesc(primitive_desc_it.weights_desc(0));
-//    });
-//    internalBlobDesc.emplace_back([&](primitive_desc_iterator &primitive_desc_it, size_t idx) -> MKLDNNMemoryDesc {
-//        if (internalBlobs.size() <= 1)
-//            return MKLDNNMemoryDesc();
-//        return MKLDNNMemoryDesc(primitive_desc_it.weights_desc(1));
-//    });
-//
-//    if (getCnnLayer()->type == "FullyConnected" || getCnnLayer()->type == "InnerProduct") {
-//        baseInputsNumber = getCnnLayer().get()->insData.size();
-//    }
+   internalBlobDesc.emplace_back([&](primitive_desc_iterator &primitive_desc_it, size_t idx) -> MKLDNNMemoryDesc {
+       return MKLDNNMemoryDesc(primitive_desc_it.weights_desc(0));
+   });
+   internalBlobDesc.emplace_back([&](primitive_desc_iterator &primitive_desc_it, size_t idx) -> MKLDNNMemoryDesc {
+       if (internalBlobs.size() <= 1)
+           return MKLDNNMemoryDesc();
+       return MKLDNNMemoryDesc(primitive_desc_it.weights_desc(1));
+   });
+
+   if (getCnnLayer()->type == "FullyConnected" || getCnnLayer()->type == "InnerProduct") {
+       baseInputsNumber = getCnnLayer().get()->insData.size();
+   }
 }
 
 std::vector<memory::format_tag> MKLDNNFullyConnectedNode::getAvailableFormatsForDims(const MKLDNNDims &dims) const {
