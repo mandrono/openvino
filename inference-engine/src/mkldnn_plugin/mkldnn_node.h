@@ -655,11 +655,15 @@ public:
         algorithm = alg;
     }
 
+    bool canFuseSimpleOperation(const MKLDNNNodePtr& node) const;
+
     virtual bool canFuse(const MKLDNNNodePtr& node) const {
         return false;
     }
 
 protected:
+    bool canBePerformedAsScaleShift(const MKLDNNNodePtr& node) const;
+
     void setType(Type type) {
         this->type = type;
     }

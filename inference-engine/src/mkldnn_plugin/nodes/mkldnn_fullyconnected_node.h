@@ -40,6 +40,8 @@ public:
 
     InferenceEngine::Precision getRuntimePrecision() const override;
 
+    bool canFuse(const MKLDNNNodePtr& node) const override;
+
     static bool isSupportedOperation(const std::shared_ptr<ngraph::Node>& op, std::string& errorMessage) noexcept;
 
 protected:

@@ -40,6 +40,7 @@
 #include <nodes/mkldnn_scatter_update_node.h>
 #include <nodes/mkldnn_interpolate_node.h>
 #include <nodes/mkldnn_reference_node.h>
+#include <nodes/mkldnn_quantize_node.h>
 #include <mkldnn_types.h>
 #include <dnnl_types.h>
 #include "mkldnn_extension_utils.h"
@@ -1310,4 +1311,35 @@ MKLDNNNode* MKLDNNNode::NodesFactory::create(const std::shared_ptr<ngraph::Node>
     }
 
     return newNode;
+}
+
+bool MKLDNNNode::canBePerformedAsScaleShift(const MKLDNNNodePtr& node) const {
+    bool inputsIsConst = true;
+    for (size_t i = 1; i < node->getParentEdges().size(); i++) {
+        if (!node->getParentEdgeAt(i)->getParent()->isConstant() || node->getParentEdgeAt(i)->getParent()->getType() != Input) {
+            inputsIsConst = false;
+        }
+    }
+    return one_of(node->getAlgorithm(), EltwiseAdd, EltwiseMultiply, EltwiseSubtract, EltwiseDivide, EltwisePrelu, EltwiseMulAdd) && inputsIsConst &&
+                  MKLDNNExtensionUtils::isPerTensorOrPerChannelBroadcastable(node->getParentEdgeAt(0)->getDims().ToSizeVector(),
+                                                                             node->getParentEdgeAt(1)->getDims().ToSizeVector());
+}
+
+bool MKLDNNNode::canFuseSimpleOperation(const MKLDNNNodePtr& node) const {
+    if (!node->getFusedWith().empty())
+        return false;
+
+    if (node->getType() == Quantize) {
+        auto* quantizeNode = dynamic_cast<MKLDNNQuantizeNode*>(node.get());
+        if (quantizeNode == nullptr)
+            THROW_IE_EXCEPTION << "Cannot get quantize layer " << node->getName();
+        return !quantizeNode->isBinarization();
+    } else if (node->getType() == Eltwise) {
+        return one_of(node->getAlgorithm(), EltwiseRelu, EltwiseGelu, EltwiseElu, EltwiseSigmoid, EltwiseBoundedRelu, EltwiseClamp, EltwiseTanh,
+                                            EltwiseSwish, EltwiseHswish, EltwiseMish, EltwiseHsigmoid, EltwiseRoundHalfToEven,
+                                            EltwiseRoundHalfAwayFromZero, EltwiseLinear, EltwiseAbs, EltwiseSquare, EltwiseSqrt)
+               || canBePerformedAsScaleShift(node);
+    }
+
+    return false;
 }
