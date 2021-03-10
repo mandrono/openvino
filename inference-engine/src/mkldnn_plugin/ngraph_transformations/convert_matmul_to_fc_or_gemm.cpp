@@ -13,13 +13,13 @@
 NGRAPH_RTTI_DEFINITION(MKLDNNPlugin::ConvertMatMulToFC, "ConvertMatMulToFC", 0);
 
 MKLDNNPlugin::ConvertMatMulToFC::ConvertMatMulToFC() {
-    std::cout << "CALLBACK MKLDNN ConvertMatMulToFC" << std::endl;
+    // std::cout << "CALLBACK MKLDNN ConvertMatMulToFC" << std::endl;
     auto matmul = ngraph::pattern::wrap_type<ngraph::opset1::MatMul>({ngraph::pattern::any_input(ngraph::pattern::has_static_shape()),
                                                                       ngraph::pattern::any_input(ngraph::pattern::has_static_shape())},
                                                                       ngraph::pattern::has_static_shape());
 
     ngraph::matcher_pass_callback callback = [this](ngraph::pattern::Matcher& m) {
-        std::cout << "REAL CALLBACK MKLDNN ConvertMatMulToFC" << std::endl;
+        // std::cout << "REAL CALLBACK MKLDNN ConvertMatMulToFC" << std::endl;
         auto matmul = std::dynamic_pointer_cast<ngraph::opset1::MatMul>(m.get_match_root());
         if (!matmul) {
             return false;
@@ -138,7 +138,7 @@ MKLDNNPlugin::ConvertMatMulToFC::ConvertMatMulToFC() {
             std::vector<float> bias_value(O, 0);
             auto fc_bias = ngraph::opset1::Constant::create(matmul->get_output_element_type(0), ngraph::Shape {O}, bias_value);
 
-            auto fc = std::make_shared<MKLDNNPlugin::FullyConnected>(fc_input_a, fc_input_b, fc_bias, output_shape, matmul->output(0).get_element_type());
+            auto fc = std::make_shared<MKLDNNPlugin::FullyConnectedNode>(fc_input_a, fc_input_b, fc_bias, output_shape, matmul->output(0).get_element_type());
             fc->set_friendly_name(matmul->get_friendly_name());
             new_ops.push_back(fc);
 
@@ -156,13 +156,13 @@ MKLDNNPlugin::ConvertMatMulToFC::ConvertMatMulToFC() {
 NGRAPH_RTTI_DEFINITION(MKLDNNPlugin::ConvertMatMulToGemm, "ConvertMatMulToGemm", 0);
 
 MKLDNNPlugin::ConvertMatMulToGemm::ConvertMatMulToGemm() {
-    std::cout << "CALLBACK MKLDNN ConvertMatMulToGemm" << std::endl;
+    // std::cout << "CALLBACK MKLDNN ConvertMatMulToGemm" << std::endl;
     auto matmul = ngraph::pattern::wrap_type<ngraph::opset1::MatMul>({ngraph::pattern::any_input(ngraph::pattern::has_static_shape()),
                                                                       ngraph::pattern::any_input(ngraph::pattern::has_static_shape())},
                                                                       ngraph::pattern::has_static_shape());
 
     ngraph::matcher_pass_callback callback = [this](ngraph::pattern::Matcher& m) {
-        std::cout << "REAL CALLBACK MKLDNN ConvertMatMulToGemm" << std::endl;
+        // std::cout << "REAL CALLBACK MKLDNN ConvertMatMulToGemm" << std::endl;
         auto matmul = std::dynamic_pointer_cast<ngraph::opset1::MatMul>(m.get_match_root());
         if (!matmul) {
             return false;

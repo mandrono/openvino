@@ -4,9 +4,9 @@
 
 #include "fully_connected.hpp"
 
-constexpr ngraph::NodeTypeInfo MKLDNNPlugin::FullyConnected::type_info;
+constexpr ngraph::NodeTypeInfo MKLDNNPlugin::FullyConnectedNode::type_info;
 
-MKLDNNPlugin::FullyConnected::FullyConnected(const ngraph::Output<Node>& A,
+MKLDNNPlugin::FullyConnectedNode::FullyConnectedNode(const ngraph::Output<Node>& A,
                                              const ngraph::Output<Node>& B,
                                              const ngraph::Output<Node>& C,
                                              const ngraph::Shape& output_shape,
@@ -15,17 +15,17 @@ MKLDNNPlugin::FullyConnected::FullyConnected(const ngraph::Output<Node>& A,
     constructor_validate_and_infer_types();
 }
 
-std::shared_ptr<ngraph::Node> MKLDNNPlugin::FullyConnected::clone_with_new_inputs(const ngraph::OutputVector& new_args) const {
+std::shared_ptr<ngraph::Node> MKLDNNPlugin::FullyConnectedNode::clone_with_new_inputs(const ngraph::OutputVector& new_args) const {
     check_new_args_count(this, new_args);
-    return std::make_shared<MKLDNNPlugin::FullyConnected>(new_args.at(0), new_args.at(1), new_args.at(2), m_output_shape);
+    return std::make_shared<MKLDNNPlugin::FullyConnectedNode>(new_args.at(0), new_args.at(1), new_args.at(2), m_output_shape);
 }
 
-void MKLDNNPlugin::FullyConnected::validate_and_infer_types() {
+void MKLDNNPlugin::FullyConnectedNode::validate_and_infer_types() {
     m_output_size = m_output_shape.back();
     set_output_type(0, m_output_type == ngraph::element::undefined ? input_value(0).get_element_type() : m_output_type, m_output_shape);
 }
 
-bool MKLDNNPlugin::FullyConnected::visit_attributes(ngraph::AttributeVisitor &visitor) {
+bool MKLDNNPlugin::FullyConnectedNode::visit_attributes(ngraph::AttributeVisitor &visitor) {
     visitor.on_attribute("out-size", m_output_size);
     return true;
 }

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+#include <ngraph/pass/constant_folding.hpp>
 #include "convert_matmul_to_fc_or_gemm.hpp"
 #include "fc_bias_fusion.hpp"
 #include "reshape_fc_fusion.hpp"
@@ -17,6 +18,7 @@ inline void convertToPluginSpecificNodes(ngraph::pass::Manager &passManager, con
     if (!ngraph::op::util::has_op_with_type<ngraph::op::FakeQuantize>(nGraphFunc)) {
         passManager.register_pass<ReshapeFullyConnectedFusion>();
     }
+    passManager.register_pass<ngraph::pass::ConstantFolding>();
     passManager.register_pass<ngraph::pass::ConvertPrecision>(ngraph::element::i64, ngraph::element::i32);
 }
 

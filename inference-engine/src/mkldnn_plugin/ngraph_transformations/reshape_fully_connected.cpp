@@ -12,15 +12,15 @@
 NGRAPH_RTTI_DEFINITION(MKLDNNPlugin::ReshapeFullyConnected, "ReshapeFullyConnected", 0);
 
 MKLDNNPlugin::ReshapeFullyConnected::ReshapeFullyConnected() {
-    std::cout << "CALLBACK MKLDNN ReshapeFullyConnected" << std::endl;
-    auto fc = ngraph::pattern::wrap_type<MKLDNNPlugin::FullyConnected>({ngraph::pattern::any_input(ngraph::pattern::has_static_shape()),
+    // std::cout << "CALLBACK MKLDNN ReshapeFullyConnected" << std::endl;
+    auto fc = ngraph::pattern::wrap_type<MKLDNNPlugin::FullyConnectedNode>({ngraph::pattern::any_input(ngraph::pattern::has_static_shape()),
                                                       ngraph::pattern::any_input(),
                                                       ngraph::pattern::any_input()},
                                                       ngraph::pattern::has_static_shape());
 
     ngraph::matcher_pass_callback callback = [this](ngraph::pattern::Matcher& m) {
-        std::cout << "REAL CALLBACK MKLDNN ReshapeFullyConnected" << std::endl;
-        auto fc = std::dynamic_pointer_cast<MKLDNNPlugin::FullyConnected> (m.get_match_root());
+        // std::cout << "REAL CALLBACK MKLDNN ReshapeFullyConnected" << std::endl;
+        auto fc = std::dynamic_pointer_cast<MKLDNNPlugin::FullyConnectedNode> (m.get_match_root());
         if (!fc || transformation_callback(fc)) {
             return false;
         }
@@ -47,7 +47,7 @@ MKLDNNPlugin::ReshapeFullyConnected::ReshapeFullyConnected() {
         auto O = fc->input_value(1).get_shape()[0];
         ngraph::Shape output_shape_new{I, O};
 
-        auto fc_new = std::make_shared<MKLDNNPlugin::FullyConnected>(reshape,
+        auto fc_new = std::make_shared<MKLDNNPlugin::FullyConnectedNode>(reshape,
                                                            fc->input_value(1),
                                                            fc->input_value(2),
                                                            output_shape_new,

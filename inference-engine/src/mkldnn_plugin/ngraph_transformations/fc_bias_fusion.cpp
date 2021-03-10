@@ -12,20 +12,20 @@
 NGRAPH_RTTI_DEFINITION(MKLDNNPlugin::FullyConnectedBiasFusion, "FullyConnectedBiasFusion", 0);
 
 MKLDNNPlugin::FullyConnectedBiasFusion::FullyConnectedBiasFusion() {
-    std::cout << "CALLBACK MKLDNN FullyConnectedBiasFusion" << std::endl;
-    auto m_fc = ngraph::pattern::wrap_type<MKLDNNPlugin::FullyConnected>([](ngraph::Output<ngraph::Node> output) {
+    // std::cout << "CALLBACK MKLDNN FullyConnectedBiasFusion" << std::endl;
+    auto m_fc = ngraph::pattern::wrap_type<MKLDNNPlugin::FullyConnectedNode>([](ngraph::Output<ngraph::Node> output) {
         return ngraph::pattern::consumers_count(1)(output) && ngraph::pattern::has_static_shape()(output);
     });
     auto m_bias = ngraph::pattern::any_input();
     auto m_add = ngraph::pattern::wrap_type<ngraph::opset1::Add>({m_fc, m_bias});
 
     ngraph::matcher_pass_callback callback = [=](ngraph::pattern::Matcher &m) {
-        std::cout << "REAL CALLBACK MKLDNN FullyConnectedBiasFusion" << std::endl;
+        // std::cout << "REAL CALLBACK MKLDNN FullyConnectedBiasFusion" << std::endl;
         auto & pattern_to_output = m.get_pattern_value_map();
 
         auto add = pattern_to_output[m_add].get_node_shared_ptr();
         auto bias = pattern_to_output[m_bias].get_node_shared_ptr();
-        auto fc = std::dynamic_pointer_cast<MKLDNNPlugin::FullyConnected>(pattern_to_output[m_fc].get_node_shared_ptr());
+        auto fc = std::dynamic_pointer_cast<MKLDNNPlugin::FullyConnectedNode>(pattern_to_output[m_fc].get_node_shared_ptr());
         if (!fc) {
             return false;
         }
@@ -55,7 +55,7 @@ MKLDNNPlugin::FullyConnectedBiasFusion::FullyConnectedBiasFusion() {
             new_ops.push_back(final_bias);
         }
 
-        auto new_fc = std::make_shared<MKLDNNPlugin::FullyConnected>(fc->input(0).get_source_output(),
+        auto new_fc = std::make_shared<MKLDNNPlugin::FullyConnectedNode>(fc->input(0).get_source_output(),
                                                            fc->input(1).get_source_output(),
                                                            final_bias,
                                                            fc->get_shape(),

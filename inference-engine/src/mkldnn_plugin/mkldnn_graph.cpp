@@ -327,20 +327,19 @@ void MKLDNNGraph::InitGraph() {
 
     optimizer.ApplyCommonGraphOptimizations(*this);
     SortTopologically();
-
+// std::cout << "InitDescriptors" << std::endl;
     InitDescriptors();
-
+// std::cout << "InitOptimalPrimitiveDescriptors" << std::endl;
     InitOptimalPrimitiveDescriptors();
-
+// std::cout << "InitEdges" << std::endl;
     InitEdges();
-
+// std::cout << "ApplyImplSpecificGraphOptimizations" << std::endl;
     optimizer.ApplyImplSpecificGraphOptimizations(*this);
     SortTopologically();
-
+// std::cout << "Allocate" << std::endl;
     Allocate();
-
+// std::cout << "CreatePrimitives" << std::endl;
     CreatePrimitives();
-
 //
 //    if (!config.dumpToDot.empty())
 //        dumpToDotFile(config.dumpToDot + "_init.dot");
@@ -388,16 +387,17 @@ void MKLDNNGraph::InitDescriptors() {
             if (inputNode)
                 inputNode->withMeanImage();
         }
+// std::cout << "getSupportedDescriptors" << std::endl;
         OV_ITT_TASK_NEXT(taskChain, node->profiling.getSupportedDescriptors);
         node->getSupportedDescriptors();
-
+// std::cout << "initSupportedPrimitiveDescriptors" << std::endl;
         OV_ITT_TASK_NEXT(taskChain, node->profiling.initSupportedPrimitiveDescriptors);
         node->initSupportedPrimitiveDescriptors();
-
+// std::cout << "filterSupportedPrimitiveDescriptors" << std::endl;
         OV_ITT_TASK_NEXT(taskChain, node->profiling.filterSupportedPrimitiveDescriptors);
         node->filterSupportedPrimitiveDescriptors();
     }
-
+// std::cout << "selectOptimalPrimitiveDescriptor" << std::endl;
     for (auto &node : graphNodes) {
         OV_ITT_TASK_NEXT(taskChain, node->profiling.selectOptimalPrimitiveDescriptor);
         node->selectOptimalPrimitiveDescriptor();

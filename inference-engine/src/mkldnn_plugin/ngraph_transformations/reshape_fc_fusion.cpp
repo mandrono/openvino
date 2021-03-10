@@ -12,14 +12,14 @@
 NGRAPH_RTTI_DEFINITION(MKLDNNPlugin::ReshapeFullyConnectedFusion, "ReshapeFullyConnectedFusion", 0);
 
 MKLDNNPlugin::ReshapeFullyConnectedFusion::ReshapeFullyConnectedFusion() {
-    std::cout << "CALLBACK MKLDNN ReshapeFullyConnectedFusion" << std::endl;
+    // std::cout << "CALLBACK MKLDNN ReshapeFullyConnectedFusion" << std::endl;
     auto m_reshape = ngraph::pattern::wrap_type<ngraph::opset1::Reshape>(ngraph::pattern::has_static_shape());
-    auto m_fc = ngraph::pattern::wrap_type<MKLDNNPlugin::FullyConnected>({m_reshape,
+    auto m_fc = ngraph::pattern::wrap_type<MKLDNNPlugin::FullyConnectedNode>({m_reshape,
                                                         ngraph::pattern::any_input(),
                                                         ngraph::pattern::any_input()});
 
     ngraph::matcher_pass_callback callback = [=](ngraph::pattern::Matcher &m) {
-        std::cout << "REAL CALLBACK MKLDNN ReshapeFullyConnectedFusion" << std::endl;
+        // std::cout << "REAL CALLBACK MKLDNN ReshapeFullyConnectedFusion" << std::endl;
         auto & pattern_to_output = m.get_pattern_value_map();
         auto fc = pattern_to_output[m_fc].get_node_shared_ptr();
         auto reshape = pattern_to_output[m_reshape].get_node_shared_ptr();
@@ -37,7 +37,7 @@ MKLDNNPlugin::ReshapeFullyConnectedFusion::ReshapeFullyConnectedFusion() {
             return false;
         }
 
-        auto new_fc = std::make_shared<MKLDNNPlugin::FullyConnected>(reshape->input_value(0),
+        auto new_fc = std::make_shared<MKLDNNPlugin::FullyConnectedNode>(reshape->input_value(0),
                                                             fc->input_value(1),
                                                             fc->input_value(2),
                                                             fc->get_shape(),
