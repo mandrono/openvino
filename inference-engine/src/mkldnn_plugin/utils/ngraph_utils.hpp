@@ -6,10 +6,8 @@
 
 #include <cassert>
 #include <ngraph/variant.hpp>
-<<<<<<< HEAD
 #include "transformations/rt_info/primitives_priority_attribute.hpp"
-=======
->>>>>>> [CPU] Plug-in migration on ngraph initial commit
+#include "transformations/rt_info/primitives_priority_attribute.hpp"
 
 namespace MKLDNNPlugin {
 
@@ -23,7 +21,6 @@ inline std::string getRTInfoValue(const std::map<std::string, std::shared_ptr<ng
     }
 };
 
-<<<<<<< HEAD
 inline std::string getPrimitivesPriorityValue(const std::shared_ptr<ngraph::Node> &node) {
     const auto &rtInfo = node->get_rt_info();
     using PrimitivesPriorityWraper = ngraph::VariantWrapper<ngraph::PrimitivesPriority>;
@@ -35,17 +32,11 @@ inline std::string getPrimitivesPriorityValue(const std::shared_ptr<ngraph::Node
     return pp.getPrimitivesPriority();
 }
 
-=======
->>>>>>> [CPU] Plug-in migration on ngraph initial commit
 template <typename T>
 inline const std::shared_ptr<T> getNgraphOpAs(const std::shared_ptr<ngraph::Node>& op) {
     auto typedOp = ngraph::as_type_ptr<T>(op);
     if (!typedOp)
-<<<<<<< HEAD
         IE_THROW() << "Can't get ngraph node " << op->get_type_name() << " with name " << op->get_friendly_name();
-=======
-        THROW_IE_EXCEPTION << "Can't get ngraph node " << op->get_type_name() << " with name " << op->get_friendly_name();
->>>>>>> [CPU] Plug-in migration on ngraph initial commit
     return typedOp;
 }
 

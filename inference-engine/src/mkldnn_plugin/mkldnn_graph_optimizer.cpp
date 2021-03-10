@@ -100,9 +100,8 @@ void MKLDNNGraphOptimizer::ApplyCommonGraphOptimizations(MKLDNNGraph &graph) {
     FuseConvolutionSumAndConvolutionSumActivation(graph);
     graph.RemoveDroppedNodes();
 
-// TODO [NM]: transformation should be implemented w/o using of CNNLayer
-//    FuseConvolutionAndSimpleOperation(graph);
-//    graph.RemoveDroppedNodes();
+    FuseConvolutionAndSimpleOperation(graph);
+    graph.RemoveDroppedNodes();
 
 // TODO [NM]: transformation should be implemented w/o using of CNNLayer
 //    FuseFullyConnectedAndSimpleOperation(graph);
@@ -962,9 +961,13 @@ void MKLDNNGraphOptimizer::FuseBinaryConvolutionAndFakeQuantize(MKLDNNGraph &gra
         return binConv->canFuse(childNode);
     };
 
-    for (int i = 0; i < graphNodes.size(); i++) {
-        auto parent = graphNodes[i];
-        if (!isSutableParentNode(parent)) continue;
+    auto parent = graphNodes.begin();
+    while (parent != graphNodes.end()) {
+        auto parentNode = *parent;
+        if (!isSutableParentNode(parentNode)) {
+            parent++;
+            continue;
+        }
 
         auto child = parent->getChildEdgeAt(0)->getChild();
         if (!isSutableChildNode(parent, child)) continue;
@@ -977,10 +980,11 @@ void MKLDNNGraphOptimizer::FuseBinaryConvolutionAndFakeQuantize(MKLDNNGraph &gra
             if (p_edge->getParent()->getType() == BinaryConvolution)
                 continue;
 
-            removeEdge(graph, p_edge);
+                removeEdge(graph, p_edge);
+            }
         }
 
-        graph.DropNode(child);
+        graph.DropNode(childNode);
     }
 }
 
