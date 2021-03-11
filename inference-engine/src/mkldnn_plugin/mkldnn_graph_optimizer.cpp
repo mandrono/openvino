@@ -138,7 +138,8 @@ void MKLDNNGraphOptimizer::FuseConvolutionAndBias(MKLDNNGraph &graph) {
     auto& graphNodes = graph.GetNodes();
 
     auto isSutableParentNode = [](MKLDNNNodePtr node) {
-        return node->getType() == Convolution &&
+        return !node->isConstant() &&
+               node->getType() == Convolution &&
                node->getChildEdges().size() == 1 &&
                node->getFusedWith().empty();
     };
@@ -267,7 +268,7 @@ void MKLDNNGraphOptimizer::FuseMultiplyAndAdd(MKLDNNGraph &graph) {
 
     auto isSutableParentNode = [&](MKLDNNNodePtr node) {
         if (node->getAlgorithm() != EltwiseMultiply || !node->getFusedWith().empty() ||
-            node->getParentEdges().size() != 2 || node->getChildEdges().size() != 1)
+            node->getParentEdges().size() != 2 || node->getChildEdges().size() != 1 || node->isConstant())
             return false;
 
         return isSutableSecondInput(node->getParentEdgesAtPort(1)[0]->getParent(), node->getParentEdgesAtPort(0)[0]->getDims());
@@ -900,7 +901,7 @@ void MKLDNNGraphOptimizer::FuseConvolutionAndSimpleOperation(MKLDNNGraph &graph)
     auto& graphNodes = graph.GetNodes();
 
     auto isSutableParentNode = [](MKLDNNNodePtr node) {
-        return node->getType() == Convolution &&
+        return !node->isConstant() && node->getType() == Convolution &&
                node->getChildEdges().size() == 1;
     };
 
@@ -955,7 +956,7 @@ void MKLDNNGraphOptimizer::FuseBinaryConvolutionAndFakeQuantize(MKLDNNGraph &gra
 
     auto isSutableParentNode = [](MKLDNNNodePtr node) {
         bool isSutableBinConv = node->getType() == BinaryConvolution;
-        return isSutableBinConv && node->getChildEdges().size() == 1;
+        return !node->isConstant() && isSutableBinConv && node->getChildEdges().size() == 1;
     };
 
     auto isSutableChildNode = [](MKLDNNNodePtr parentNode, MKLDNNNodePtr childNode) {
@@ -1135,8 +1136,8 @@ void MKLDNNGraphOptimizer::FuseConvolutionSumAndConvolutionSumActivation(MKLDNNG
         auto parent1 = graphNode->getParentEdgeAt(0)->getParent();
         auto parent2 = graphNode->getParentEdgeAt(1)->getParent();
 
-        bool isSutableParent1 = parent1->getType() == Convolution || parent1->getType() == BinaryConvolution;
-        bool isSutableParent2 = parent2->getType() == Convolution || parent2->getType() == BinaryConvolution;
+        bool isSutableParent1 = !parent1->isConstant() && (parent1->getType() == Convolution || parent1->getType() == BinaryConvolution);
+        bool isSutableParent2 = !parent2->isConstant() && (parent2->getType() == Convolution || parent2->getType() == BinaryConvolution);
 
         auto* binConvNode1 = dynamic_cast<MKLDNNBinaryConvolutionNode *>(parent1.get());
         if (binConvNode1) {
@@ -1264,7 +1265,7 @@ void MKLDNNGraphOptimizer::FuseMVNAndSimpleOperation(MKLDNNGraph &graph) {
     auto& graphNodes = graph.GetNodes();
 
     auto isSutableParentNode = [](MKLDNNNodePtr node) {
-        bool isSutableMVN = (node->getType() == MVN) && (node->inDims[0].ndims() == 4 || node->inDims[0].ndims() == 5);
+        bool isSutableMVN = !node->isConstant() && (node->getType() == MVN) && (node->inDims[0].ndims() == 4 || node->inDims[0].ndims() == 5);
 
         if (isSutableMVN) {
             auto mvnNode = std::dynamic_pointer_cast<MKLDNNMVNNode>(node);
@@ -1417,7 +1418,7 @@ void MKLDNNGraphOptimizer::FuseEltwiseAndSimple(MKLDNNGraph &graph) {
     auto& graphNodes = graph.GetNodes();
 
     auto isSutableParentNode = [](MKLDNNNodePtr node) {
-        return node->getType() == Eltwise && node->getChildEdges().size() == 1;
+        return !node->isConstant() && node->getType() == Eltwise && node->getChildEdges().size() == 1;
     };
 
     auto isSutableChildNode = [&](MKLDNNNodePtr parentNode, MKLDNNNodePtr childNode) {
