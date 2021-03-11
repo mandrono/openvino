@@ -103,15 +103,6 @@ void MKLDNNGraphOptimizer::ApplyCommonGraphOptimizations(MKLDNNGraph &graph) {
     FuseBinaryConvolutionAndQuantize(graph);
     graph.RemoveDroppedNodes();
 
-    OV_ITT_SCOPE_NEXT(FIRST_INFERENCE, taskChain, "FuseBatchNormWithScale");
-    FuseBatchNormWithScale(graph);
-    graph.RemoveDroppedNodes();
-
-    // OV_ITT_SCOPE_NEXT(FIRST_INFERENCE, taskChain, "RemoveIdentityOperator");
-    // RemoveIdentityOperator(graph);
-    // graph.RemoveDroppedNodes();
-
-    OV_ITT_SCOPE_NEXT(FIRST_INFERENCE, taskChain, "FuseConvolutionSumAndConvolutionSumActivation");
     FuseConvolutionSumAndConvolutionSumActivation(graph);
     graph.RemoveDroppedNodes();
 
@@ -711,40 +702,6 @@ void MKLDNNGraphOptimizer::MergeTwoEqualScaleShifts(MKLDNNGraph& graph) {
 //        if (!isEqualScaleShiftNodes(childNode1, childNode2)) continue;
 //
 //        MergeScaleShiftNodes(childNode1, childNode2);
-//    }
-}
-
-void MKLDNNGraphOptimizer::FuseBatchNormWithScale(MKLDNNGraph &graph) {
-//    auto &graphNodes = graph.GetNodes();
-//
-//    for (int i = 0; i < graphNodes.size(); i++) {
-//        const auto& bn = graphNodes[i];
-//        if (bn->getType() == BatchNormalization) {
-//            const auto& outputNodesMap = graph.GetOutputNodesMap();
-//            const std::string node_name = bn->getName();
-//            // Check that the node is not output node
-//            if (std::find_if(outputNodesMap.begin(), outputNodesMap.end(),
-//                            [&node_name](const MKLDNNNodePtr& x) {
-//                                return x->getName() == node_name;}) == outputNodesMap.end()) {
-//                if (bn->getChildEdges().size() == 1) {
-//                    auto child = bn->getChildEdgeAt(0)->getChild();
-//                    if (child->type == Eltwise && child->getCnnLayer()->type == "ScaleShift") {
-//                        bn->fuseWith(child);
-//
-//                        auto parentEdges = child->parentEdges;
-//                        for (auto &parentEdge : parentEdges) {
-//                            auto p_edge = parentEdge.lock();
-//                            if (p_edge->getParent()->getType() == BatchNormalization)
-//                                continue;
-//
-//                            removeEdge(graph, p_edge);
-//                        }
-//
-//                        graph.DropNode(child);
-//                    }
-//                }
-//            }
-//        }
 //    }
 }
 
