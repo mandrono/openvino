@@ -818,21 +818,20 @@ private:
 
 bool MKLDNNFakeQuantizeNode::isSupportedOperation(const std::shared_ptr<const ngraph::Node>& op, std::string& errorMessage) noexcept {
     try {
-        const std::string errorPrefix = "FakeQuantize node with name '" + op->get_friendly_name() + "'";
         const auto fq = std::dynamic_pointer_cast<const ngraph::opset1::FakeQuantize>(op);
         if (!fq) {
-            errorMessage = "CPU plug-in supports FakeQuantize node only from opset1. Node name: " + op->get_friendly_name();
+            errorMessage = "Only opset1 FakeQuantize operation is supported";
             return false;
         }
         for (size_t i = 0; i < fq->get_input_size(); i++) {
             if (fq->get_input_shape(i).size() > 5) {
-                errorMessage = errorPrefix + " doesn't support inputs with rank: " + std::to_string(fq->get_input_shape(i).size());
+                errorMessage = "Doesn't support inputs with rank: " + std::to_string(fq->get_input_shape(i).size());
                 return false;
             }
         }
         for (size_t i = 1; i < fq->get_input_size(); i++) {
             if (!std::dynamic_pointer_cast<const ngraph::opset1::Constant>(fq->get_input_node_shared_ptr(i))) {
-                errorMessage = errorPrefix + " has non const 'range' input on " + std::to_string(i) + " port";
+                errorMessage = "Has non const 'range' input on " + std::to_string(i) + " port";
                 return false;
             }
         }
@@ -849,14 +848,14 @@ bool MKLDNNFakeQuantizeNode::isSupportedOperation(const std::shared_ptr<const ng
                     }
                 }
                 if (count_not_unit_axis > 1 || not_unit_axis > 1) {
-                    errorMessage = errorPrefix + " supports only per-tensor and per-channel quantizations";
+                    errorMessage = "Supports only per-tensor and per-channel quantizations";
                     return false;
                 }
             }
         }
         if (fq->get_auto_broadcast().m_type != ngraph::op::AutoBroadcastType::NONE &&
             fq->get_auto_broadcast().m_type != ngraph::op::AutoBroadcastType::NUMPY) {
-            errorMessage = errorPrefix + "doesn't support broadcast type: " + ngraph::as_string(fq->get_auto_broadcast().m_type);
+            errorMessage = "Doesn't support broadcast type: " + ngraph::as_string(fq->get_auto_broadcast().m_type);
             return false;
         }
     } catch (...) {
