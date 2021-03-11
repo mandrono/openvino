@@ -158,7 +158,7 @@ static const InferenceEngine::details::caseless_unordered_map<std::string, Type>
 //        { "LSTMSequence", RNNSeq },
 //        { "GRUSequence", RNNSeq },
 //        { "RNNSequence", RNNSeq },
-        { "FakeQuantize", Quantize },
+        { "FakeQuantize", FakeQuantize },
 //        { "BinaryConvolution", BinaryConvolution },
 //        { "DeformableConvolution", DeformableConvolution },
 //        { "TensorIterator", TensorIterator },

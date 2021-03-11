@@ -816,7 +816,7 @@ private:
     }
 };
 
-bool MKLDNNQuantizeNode::isSupportedOperation(const std::shared_ptr<const ngraph::Node>& op, std::string& errorMessage) noexcept {
+bool MKLDNNFakeQuantizeNode::isSupportedOperation(const std::shared_ptr<const ngraph::Node>& op, std::string& errorMessage) noexcept {
     try {
         const std::string errorPrefix = "FakeQuantize node with name '" + op->get_friendly_name() + "'";
         const auto fq = std::dynamic_pointer_cast<const ngraph::opset1::FakeQuantize>(op);
@@ -865,7 +865,7 @@ bool MKLDNNQuantizeNode::isSupportedOperation(const std::shared_ptr<const ngraph
     return true;
 }
 
-MKLDNNQuantizeNode::MKLDNNQuantizeNode(const std::shared_ptr<ngraph::Node>& op, const mkldnn::engine& eng, MKLDNNWeightsSharing::Ptr &cache) :
+MKLDNNFakeQuantizeNode::MKLDNNFakeQuantizeNode(const std::shared_ptr<ngraph::Node>& op, const mkldnn::engine& eng, MKLDNNWeightsSharing::Ptr &cache) :
         MKLDNNNode(op, eng, cache) {
     std::string errorMessage;
     if (isSupportedOperation(op, errorMessage)) {
@@ -1096,7 +1096,7 @@ MKLDNNQuantizeNode::MKLDNNQuantizeNode(const std::shared_ptr<ngraph::Node>& op, 
     }
 }
 
-std::vector<mkldnn::memory::format_tag> MKLDNNQuantizeNode::getDataFormats() const {
+std::vector<mkldnn::memory::format_tag> MKLDNNFakeQuantizeNode::getDataFormats() const {
     // Special case for first FQ in the network
     if (getParentEdgesAtPort(0)[0]->getDims()[getAxis()] == 3) {
         return { MKLDNNMemory::GetPlainFormat(getParentEdgesAtPort(0)[0]->getDims()) };
@@ -1126,7 +1126,7 @@ std::vector<mkldnn::memory::format_tag> MKLDNNQuantizeNode::getDataFormats() con
     }
 }
 
-void MKLDNNQuantizeNode::init() {
+void MKLDNNFakeQuantizeNode::init() {
     if (getParentEdges().size() != 5)
         THROW_IE_EXCEPTION << errorPrefix << "has incorrect number of input edges: " << getParentEdges().size();
     if (getChildEdges().empty())
@@ -1138,7 +1138,7 @@ void MKLDNNQuantizeNode::init() {
     }
 }
 
-void MKLDNNQuantizeNode::getSupportedDescriptors() {
+void MKLDNNFakeQuantizeNode::getSupportedDescriptors() {
     if (getParentEdgesAtPort(0)[0]->getDims().ndims() != getChildEdgesAtPort(0)[0]->getDims().ndims()) {
         THROW_IE_EXCEPTION << errorPrefix << "has different ranks for input and output tensors";
     }
@@ -1161,7 +1161,7 @@ void MKLDNNQuantizeNode::getSupportedDescriptors() {
     }
 }
 
-void MKLDNNQuantizeNode::initSupportedPrimitiveDescriptors() {
+void MKLDNNFakeQuantizeNode::initSupportedPrimitiveDescriptors() {
     if (!supportedPrimitiveDescriptors.empty())
         return;
 
@@ -1215,7 +1215,7 @@ void MKLDNNQuantizeNode::initSupportedPrimitiveDescriptors() {
     }
 }
 
-void MKLDNNQuantizeNode::createPrimitive() {
+void MKLDNNFakeQuantizeNode::createPrimitive() {
     auto config = getSelectedPrimitiveDescriptor()->getConfig();
 
     auto inDims = config.inConfs[0].desc.getDims();
@@ -1287,7 +1287,7 @@ void MKLDNNQuantizeNode::createPrimitive() {
     }
 }
 
-void MKLDNNQuantizeNode::executeReference() {
+void MKLDNNFakeQuantizeNode::executeReference() {
     auto &srcMemory = getParentEdgeAt(0)->getMemoryPtr();
     auto &dstMemory = getChildEdgeAt(0)->getMemoryPtr();
 
@@ -1405,7 +1405,7 @@ void MKLDNNQuantizeNode::executeReference() {
     }
 }
 
-void MKLDNNQuantizeNode::executeBinarization() {
+void MKLDNNFakeQuantizeNode::executeBinarization() {
     auto &srcMemory = getParentEdgeAt(0)->getMemoryPtr();
     auto &dstMemory = getChildEdgeAt(0)->getMemoryPtr();
 
@@ -1445,7 +1445,7 @@ void MKLDNNQuantizeNode::executeBinarization() {
     });
 }
 
-void MKLDNNQuantizeNode::executeQuantization() {
+void MKLDNNFakeQuantizeNode::executeQuantization() {
     auto &srcMemory = getParentEdgeAt(0)->getMemoryPtr();
     auto &dstMemory = getChildEdgeAt(0)->getMemoryPtr();
 
@@ -1546,7 +1546,7 @@ void MKLDNNQuantizeNode::executeQuantization() {
     }
 }
 
-void MKLDNNQuantizeNode::execute(mkldnn::stream strm) {
+void MKLDNNFakeQuantizeNode::execute(mkldnn::stream strm) {
     auto selectedPrimitiveDescriptor = getSelectedPrimitiveDescriptor();
     if (!selectedPrimitiveDescriptor)
         THROW_IE_EXCEPTION << "CPU quantize node with name '" << getName() << "' doesn't have primitive descriptors.";
@@ -1561,7 +1561,7 @@ void MKLDNNQuantizeNode::execute(mkldnn::stream strm) {
     }
 }
 
-void MKLDNNQuantizeNode::appendPostOps(mkldnn::post_ops& ops) {
+void MKLDNNFakeQuantizeNode::appendPostOps(mkldnn::post_ops& ops) {
     // MKLDNN quantization_injectors assumes that quantization data memory is always aligned on 16
     // by length of AVX512 vector register which is also enough for AVX2 and SSE42 implementations.
     // Otherwise it can lead to buffer over-read and performance penalties due to denormals.
@@ -1608,8 +1608,8 @@ void MKLDNNQuantizeNode::appendPostOps(mkldnn::post_ops& ops) {
         isPostOpDataInitialized = true;
 }
 
-bool MKLDNNQuantizeNode::created() const {
-    return getType() == Quantize;
+bool MKLDNNFakeQuantizeNode::created() const {
+    return getType() == FakeQuantize;
 }
 
-REG_MKLDNN_PRIM_FOR(MKLDNNQuantizeNode, Quantize);
+REG_MKLDNN_PRIM_FOR(MKLDNNFakeQuantizeNode, FakeQuantize);

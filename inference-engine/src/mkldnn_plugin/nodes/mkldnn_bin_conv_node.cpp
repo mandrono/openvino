@@ -897,7 +897,7 @@ void MKLDNNBinaryConvolutionNode::getSupportedDescriptors() {
 //
 //    std::string errorPrefix = "BinaryConvolution layer with name '" + getName() + "' ";
 //
-//    withBinarization = isFusedWith(Quantize);
+//    withBinarization = isFusedWith(FakeQuantize);
 //    withSum = false;
 //    int expectedInputEdgesNum = 2;
 //    for (int i = 0; i < fusedWith.size(); i++) {
@@ -1081,14 +1081,14 @@ bool MKLDNNBinaryConvolutionNode::canFuse(const MKLDNNNodePtr& node) const {
         return false;
 
     // Binarization have to be last operation in fusing chain
-    if (isFusedWith(Quantize))
+    if (isFusedWith(FakeQuantize))
         return false;
 
-    if (node->getType() == Quantize) {
-        auto* quantizeNode = dynamic_cast<MKLDNNQuantizeNode*>(node.get());
-        if (quantizeNode == nullptr)
-            THROW_IE_EXCEPTION << "Cannot get quantize node " << node->getName();
-        return quantizeNode->isBinarization();
+    if (node->getType() == FakeQuantize) {
+        auto* fakeQuantizeNode = dynamic_cast<MKLDNNFakeQuantizeNode*>(node.get());
+        if (fakeQuantizeNode == nullptr)
+            THROW_IE_EXCEPTION << "Cannot get FakeQuantize node " << node->getName();
+        return fakeQuantizeNode->isBinarization();
     } else if (node->getType() == Eltwise) {
         // Only one Add operation can be fused since it is implemented via output blob reuse
         if (node->getAlgorithm() == EltwiseAdd) {
@@ -1120,9 +1120,9 @@ void MKLDNNBinaryConvolutionNode::setPostOps(mkldnn::primitive_attr &attr) {
             continue;
         }
 
-        auto* quantizeNode = dynamic_cast<MKLDNNQuantizeNode *>(node.get());
-        if (quantizeNode) {
-            quantizeNode->appendPostOps(ops);
+        auto* fakeQuantizeNode = dynamic_cast<MKLDNNFakeQuantizeNode *>(node.get());
+        if (fakeQuantizeNode) {
+            fakeQuantizeNode->appendPostOps(ops);
             continue;
         }
 
