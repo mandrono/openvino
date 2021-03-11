@@ -12,7 +12,7 @@
 #include "nodes/mkldnn_reorder_node.h"
 #include "nodes/mkldnn_conv_node.h"
 #include "nodes/mkldnn_bin_conv_node.h"
-#include "nodes/mkldnn_quantize_node.h"
+#include "nodes/mkldnn_fake_quantize_node.h"
 #include "nodes/mkldnn_mvn_node.h"
 #include <nodes/mkldnn_transpose_node.h>
 #include "nodes/mkldnn_interpolate_node.h"

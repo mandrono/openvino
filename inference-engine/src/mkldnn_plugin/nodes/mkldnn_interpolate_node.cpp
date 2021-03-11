@@ -4,7 +4,7 @@
 
 #include "mkldnn_interpolate_node.h"
 
-#include "mkldnn_quantize_node.h"
+#include "mkldnn_fake_quantize_node.h"
 #include "mkldnn_eltwise_node.h"
 #include <mkldnn.hpp>
 #include <string>

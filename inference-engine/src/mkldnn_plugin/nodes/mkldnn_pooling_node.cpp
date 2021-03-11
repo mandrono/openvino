@@ -4,7 +4,7 @@
 
 #include "mkldnn_pooling_node.h"
 
-#include "mkldnn_quantize_node.h"
+#include "mkldnn_fake_quantize_node.h"
 #include "mkldnn_conv_node.h"
 #include "mkldnn_concat_node.h"
 #include <mkldnn.hpp>

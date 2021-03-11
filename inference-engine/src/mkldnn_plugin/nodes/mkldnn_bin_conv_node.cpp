@@ -6,7 +6,7 @@
 #include "mkldnn_reorder_node.h"
 #include "mkldnn_input_node.h"
 #include "mkldnn_eltwise_node.h"
-#include "mkldnn_quantize_node.h"
+#include "mkldnn_fake_quantize_node.h"
 #include "mkldnn_conv_node.h"
 #include <string>
 #include <vector>

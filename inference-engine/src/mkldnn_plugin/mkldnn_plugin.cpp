@@ -72,7 +72,7 @@
 #include <low_precision/network_helper.hpp>
 
 #include "nodes/mkldnn_mvn_node.h"
-#include "nodes/mkldnn_quantize_node.h"
+#include "nodes/mkldnn_fake_quantize_node.h"
 
 #if !defined(__arm__) && !defined(_M_ARM) && !defined(__aarch64__) && !defined(_M_ARM64)
 # ifdef _WIN32

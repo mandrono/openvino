@@ -12,7 +12,7 @@
 #include <cpu/ref_eltwise.hpp>
 
 #include "mkldnn_extension_utils.h"
-#include "mkldnn_quantize_node.h"
+#include "mkldnn_fake_quantize_node.h"
 #include "mkldnn_pooling_node.h"
 #include "mkldnn_input_node.h"
 #include "common/cpu_convert.h"

@@ -6,7 +6,7 @@
 
 #include <ie_parallel.hpp>
 
-#include "mkldnn_quantize_node.h"
+#include "mkldnn_fake_quantize_node.h"
 #include "mkldnn_eltwise_node.h"
 #include "utils/bfloat16.hpp"
 #include "utils/general_utils.h"

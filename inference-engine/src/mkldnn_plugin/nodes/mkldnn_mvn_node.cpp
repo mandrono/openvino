@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include "mkldnn_quantize_node.h"
+#include "mkldnn_fake_quantize_node.h"
 #include "mkldnn_eltwise_node.h"
 #include <mkldnn_extension_utils.h>
 #include "utils/bfloat16.hpp"
