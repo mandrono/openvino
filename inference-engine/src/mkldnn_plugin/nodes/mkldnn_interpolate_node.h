@@ -44,7 +44,7 @@ enum class InterpolateNearestMode {
     simple
 };
 
-enum class ShapeCalcMode {
+enum class InterpolateShapeCalcMode {
     sizes,
     scales
 };
@@ -156,7 +156,7 @@ private:
     std::vector<int> padEnd;
     bool hasPad = false;
     InterpolateNearestMode nearestMode = InterpolateNearestMode::round_prefer_floor;
-    ShapeCalcMode shapeCalcMode;
+    InterpolateShapeCalcMode shapeCalcMode;
 
     float cubeCoeff = -0.75;
 

@@ -120,16 +120,15 @@ std::vector<CPUSpecificParams> filterCPUInfoForDevice() {
     return resCPUParams;
 }
 
-std::vector<fusingSpecificParams> getFusingPatterns() {
-    std::vector<fusingSpecificParams> fusingPatterns;
-    fusingPatterns.push_back(emptyFusingSpec);
-    if (with_cpu_x86_sse42()) {
-        fusingPatterns.push_back(fusingSubtractPerChannel);
-    }
-    return fusingPatterns;
-}
+const std::vector<fusingSpecificParams> fusingParamsSet {
+    emptyFusingSpec,
+    fusingRelu,
+    fusingSubtractPerChannel,
+    fusingPReluPerTensor
+};
 
 const std::vector<InferenceEngine::Precision> netPrecisions = {
+    InferenceEngine::Precision::BF16,
     InferenceEngine::Precision::FP32
 };
 
@@ -228,7 +227,7 @@ INSTANTIATE_TEST_CASE_P(smoke_InterpolateNN_Layout_Test, InterpolateLayerCPUTest
                 ::testing::Values(std::vector<size_t>({1, 21, 50, 60})),
                 ::testing::Values(CommonTestUtils::DEVICE_CPU)),
             ::testing::ValuesIn(filterCPUInfoForDevice()),
-            ::testing::ValuesIn(getFusingPatterns())),
+            ::testing::ValuesIn(fusingParamsSet)),
     InterpolateLayerCPUTest::getTestCaseName);
 
 INSTANTIATE_TEST_CASE_P(smoke_InterpolateLinearOnnx_Layout_Test, InterpolateLayerCPUTest,
@@ -244,7 +243,7 @@ INSTANTIATE_TEST_CASE_P(smoke_InterpolateLinearOnnx_Layout_Test, InterpolateLaye
                 ::testing::Values(std::vector<size_t>({1, 21, 50, 60})),
                 ::testing::Values(CommonTestUtils::DEVICE_CPU)),
             ::testing::ValuesIn(filterCPUInfoForDevice()),
-            ::testing::ValuesIn(getFusingPatterns())),
+            ::testing::ValuesIn(fusingParamsSet)),
     InterpolateLayerCPUTest::getTestCaseName);
 
 INSTANTIATE_TEST_CASE_P(smoke_InterpolateLinear_Layout_Test, InterpolateLayerCPUTest,
@@ -260,7 +259,7 @@ INSTANTIATE_TEST_CASE_P(smoke_InterpolateLinear_Layout_Test, InterpolateLayerCPU
                 ::testing::Values(std::vector<size_t>({1, 21, 50, 60})),
                 ::testing::Values(CommonTestUtils::DEVICE_CPU)),
             ::testing::ValuesIn(filterCPUInfoForDevice()),
-            ::testing::ValuesIn(getFusingPatterns())),
+            ::testing::ValuesIn(fusingParamsSet)),
     InterpolateLayerCPUTest::getTestCaseName);
 
 ////////////////////////5D/////////////////////////////
@@ -332,7 +331,7 @@ INSTANTIATE_TEST_CASE_P(smoke_InterpolateLinearOnnx5D_Layout_Test, InterpolateLa
                 ::testing::Values(std::vector<size_t>({1, 21, 5, 15, 15})),
                 ::testing::Values(CommonTestUtils::DEVICE_CPU)),
             ::testing::ValuesIn(filterCPUInfoForDevice5D()),
-            ::testing::ValuesIn(getFusingPatterns())),
+            ::testing::ValuesIn(fusingParamsSet)),
     InterpolateLayerCPUTest::getTestCaseName);
 
 INSTANTIATE_TEST_CASE_P(smoke_InterpolateNN5D_Layout_Test, InterpolateLayerCPUTest,
@@ -348,7 +347,7 @@ INSTANTIATE_TEST_CASE_P(smoke_InterpolateNN5D_Layout_Test, InterpolateLayerCPUTe
                 ::testing::Values(std::vector<size_t>({1, 21, 5, 15, 15})),
                 ::testing::Values(CommonTestUtils::DEVICE_CPU)),
             ::testing::ValuesIn(filterCPUInfoForDevice5D()),
-            ::testing::ValuesIn(getFusingPatterns())),
+            ::testing::ValuesIn(fusingParamsSet)),
     InterpolateLayerCPUTest::getTestCaseName);
 
 } // namespace
