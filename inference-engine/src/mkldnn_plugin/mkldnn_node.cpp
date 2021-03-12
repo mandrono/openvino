@@ -1323,13 +1323,12 @@ MKLDNNNode* MKLDNNNode::NodesFactory::create(const std::shared_ptr<ngraph::Node>
 }
 
 bool MKLDNNNode::canBePerformedAsScaleShift() const {
-    bool inputsIsConst = true;
     for (size_t i = 1; i < getParentEdges().size(); i++) {
         if (!getParentEdgeAt(i)->getParent()->isConstant() || getParentEdgeAt(i)->getParent()->getType() != Input) {
-            inputsIsConst = false;
+            return false;
         }
     }
-    return one_of(getAlgorithm(), EltwiseAdd, EltwiseMultiply, EltwiseSubtract, EltwiseDivide, EltwisePrelu, EltwiseMulAdd) && inputsIsConst &&
+    return one_of(getAlgorithm(), EltwiseAdd, EltwiseMultiply, EltwiseSubtract, EltwiseDivide, EltwisePrelu, EltwiseMulAdd) &&
                   MKLDNNExtensionUtils::isPerTensorOrPerChannelBroadcastable(getParentEdgeAt(0)->getDims().ToSizeVector(),
                                                                              getParentEdgeAt(1)->getDims().ToSizeVector());
 }

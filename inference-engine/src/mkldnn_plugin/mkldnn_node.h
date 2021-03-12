@@ -151,7 +151,12 @@ enum Algorithm {
     EltwiseHswish,
     EltwiseHsigmoid,
     EltwiseRoundHalfToEven,
-    EltwiseRoundHalfAwayFromZero
+    EltwiseRoundHalfAwayFromZero,
+
+    // FakeQuantize algorithms
+    FakeQuantization,
+    Quantization,
+    FakeQuantizeBinarization
 };
 
 Type TypeFromName(const std::string type);

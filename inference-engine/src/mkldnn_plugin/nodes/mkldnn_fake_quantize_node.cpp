@@ -213,7 +213,7 @@ struct jit_uni_quantization_kernel : public jit_uni_quantize_kernel, public jit_
     };
 
     void generate() override {
-        do_dequantization = jqp_.op_type == QuantizeOpType::FakeQuantization;
+        do_dequantization = jqp_.op_type == FakeQuantization;
         do_rounding = do_dequantization || jqp_.dst_prc == Precision::FP32;
 
         this->preamble();
@@ -823,9 +823,13 @@ bool MKLDNNFakeQuantizeNode::isSupportedOperation(const std::shared_ptr<const ng
             errorMessage = "Only opset1 FakeQuantize operation is supported";
             return false;
         }
-        for (size_t i = 0; i < fq->get_input_size(); i++) {
+        if (fq->get_input_shape(0).size() < 2 || fq->get_input_shape(0).size() > 5) {
+            errorMessage = "Doesn't support 'data' input with rank: " + std::to_string(fq->get_input_shape(0).size());
+            return false;
+        }
+        for (size_t i = 1; i < fq->get_input_size(); i++) {
             if (fq->get_input_shape(i).size() > 5) {
-                errorMessage = "Doesn't support inputs with rank: " + std::to_string(fq->get_input_shape(i).size());
+                errorMessage = "Doesn't support 'range' input with rank: " + std::to_string(fq->get_input_shape(i).size());
                 return false;
             }
         }
@@ -868,6 +872,7 @@ MKLDNNFakeQuantizeNode::MKLDNNFakeQuantizeNode(const std::shared_ptr<ngraph::Nod
         MKLDNNNode(op, eng, cache) {
     std::string errorMessage;
     if (isSupportedOperation(op, errorMessage)) {
+        algorithm = FakeQuantization;
         const auto fq = std::dynamic_pointer_cast<const ngraph::opset1::FakeQuantize>(op);
 
         errorPrefix = "FakeQuantize node with name '" + getName() + "' ";
@@ -973,7 +978,7 @@ MKLDNNFakeQuantizeNode::MKLDNNFakeQuantizeNode(const std::shared_ptr<ngraph::Nod
         }
 
         if (binarization) {
-            quantizeOpType = QuantizeOpType::Binarization;
+            algorithm = FakeQuantizeBinarization;
 
             binarizationThresholds.resize(axisPaddedSize);
             binarizationOutputMask.resize(axisPaddedSize);
@@ -1074,15 +1079,15 @@ MKLDNNFakeQuantizeNode::MKLDNNFakeQuantizeNode(const std::shared_ptr<ngraph::Nod
                     quantizationOnly = false;
             }
 
-            quantizeOpType = quantizationOnly ? QuantizeOpType::Quantization : QuantizeOpType::FakeQuantization;
+            algorithm = quantizationOnly ? Quantization : FakeQuantization;
         }
 
         if (binarization) {
             inputPrecision = Precision::FP32;
             outputPrecision = Precision::BIN;
         } else {
-            inputPrecision = getOriginalInputPrecisions()[0];
-            outputPrecision = getOriginalOutputPrecisions()[0];
+            inputPrecision = getOriginalInputPrecisionAtPort(0);
+            outputPrecision = getOriginalOutputPrecisionAtPort(0);
 
             if (inputPrecision != Precision::FP32 && inputPrecision != Precision::U8 && inputPrecision != Precision::I8)
                 inputPrecision = Precision::FP32;
@@ -1125,7 +1130,7 @@ std::vector<mkldnn::memory::format_tag> MKLDNNFakeQuantizeNode::getDataFormats()
     }
 }
 
-void MKLDNNFakeQuantizeNode::init() {
+void MKLDNNFakeQuantizeNode::getSupportedDescriptors() {
     if (getParentEdges().size() != 5)
         THROW_IE_EXCEPTION << errorPrefix << "has incorrect number of input edges: " << getParentEdges().size();
     if (getChildEdges().empty())
@@ -1135,15 +1140,9 @@ void MKLDNNFakeQuantizeNode::init() {
         if (getParentEdgesAtPort(i).size() != 1)
             THROW_IE_EXCEPTION << errorPrefix << "has unsupported number of parent edges at port " << i;
     }
-}
 
-void MKLDNNFakeQuantizeNode::getSupportedDescriptors() {
     if (getParentEdgesAtPort(0)[0]->getDims().ndims() != getChildEdgesAtPort(0)[0]->getDims().ndims()) {
         THROW_IE_EXCEPTION << errorPrefix << "has different ranks for input and output tensors";
-    }
-
-    if (getParentEdgesAtPort(0)[0]->getDims().ndims() < 1ul || getParentEdgesAtPort(0)[0]->getDims().ndims() > 5ul) {
-        THROW_IE_EXCEPTION << errorPrefix << "has unsupported number of dimensions for input at edge 0";
     }
 
     if (isBinarization()) {
@@ -1226,7 +1225,7 @@ void MKLDNNFakeQuantizeNode::createPrimitive() {
 
     jqp.src_layout = config.inConfs[0].desc.getLayout();
 
-    jqp.op_type = quantizeOpType;
+    jqp.op_type = getAlgorithm();
 
     auto selectedPrimitiveDescriptor = getSelectedPrimitiveDescriptor();
     if (!selectedPrimitiveDescriptor)
@@ -1305,7 +1304,7 @@ void MKLDNNFakeQuantizeNode::executeReference() {
     const int H = srcDims.size() == 3 ? srcDims[2] : srcDims.size() > 3 ? srcDims[srcDims.size() - 2] : 1;
     const int W = srcDims.size() > 3 ? srcDims[srcDims.size() - 1] : 1;
 
-    if (jqp.op_type == QuantizeOpType::Binarization) {
+    if (jqp.op_type == FakeQuantizeBinarization) {
         size_t tmp = s_str[s_str.size() - 1];
         for (int i = s_str.size() - 1; i > 1; i--) {
             s_str[i] = s_str[i - 1];
@@ -1551,7 +1550,7 @@ void MKLDNNFakeQuantizeNode::execute(mkldnn::stream strm) {
         THROW_IE_EXCEPTION << "CPU quantize node with name '" << getName() << "' doesn't have primitive descriptors.";
 
     if (selectedPrimitiveDescriptor->getImplementationType() != impl_desc_type::ref) {
-        if (jqp.op_type == QuantizeOpType::Binarization)
+        if (jqp.op_type == FakeQuantizeBinarization)
             executeBinarization();
         else
             executeQuantization();
@@ -1566,7 +1565,7 @@ void MKLDNNFakeQuantizeNode::appendPostOps(mkldnn::post_ops& ops) {
     // Otherwise it can lead to buffer over-read and performance penalties due to denormals.
     const size_t bufferAlignment = 16;
 
-    if (quantizeOpType == QuantizeOpType::Binarization) {
+    if (getAlgorithm() == FakeQuantizeBinarization) {
         if (!isPostOpDataInitialized) {
             size_t paddedSize = rnd_up(binarizationThresholds.size(), bufferAlignment);
             binarizationThresholds.resize(paddedSize, 0);
@@ -1597,8 +1596,8 @@ void MKLDNNFakeQuantizeNode::appendPostOps(mkldnn::post_ops& ops) {
             outputShiftData.set(outputShift.size(), 1 << 1, &outputShift[0]);
         }
 
-        mkldnn::algorithm alg = quantizeOpType == QuantizeOpType::FakeQuantization ? mkldnn::algorithm::quantization_quantize_dequantize :
-                                                                                     mkldnn::algorithm::quantization_quantize;
+        mkldnn::algorithm alg = getAlgorithm() == FakeQuantization ? mkldnn::algorithm::quantization_quantize_dequantize :
+                                                                     mkldnn::algorithm::quantization_quantize;
 
         ops.append_quantization(alg, &cropLowData, &cropHighData, &inputScaleData, &inputShiftData, &outputScaleData, &outputShiftData);
     }

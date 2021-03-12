@@ -15,12 +15,6 @@
 
 namespace MKLDNNPlugin {
 
-enum QuantizeOpType {
-    FakeQuantization,
-    Quantization,
-    Binarization,
-};
-
 struct jit_quantize_params {
     int c;
 
@@ -30,7 +24,7 @@ struct jit_quantize_params {
 
     InferenceEngine::Layout src_layout;
 
-    QuantizeOpType op_type;
+    Algorithm op_type;
 };
 
 struct jit_quantize_call_args {
@@ -81,8 +75,7 @@ public:
 
     size_t getAxis() const { return axis; }
 
-    bool isBinarization() const { return quantizeOpType == QuantizeOpType::Binarization; }
-    QuantizeOpType getOpType() const { return quantizeOpType; }
+    bool isBinarization() const { return getAlgorithm() == Algorithm::FakeQuantizeBinarization; }
 
     const float* getBinarizationTresholdsPtr() const { return &binarizationThresholds[0]; }
     const float* getBinarizationOutputMaskPtr() const { return reinterpret_cast<const float*>(&binarizationOutputMask[0]); }
@@ -116,7 +109,6 @@ public:
     static bool isSupportedOperation(const std::shared_ptr<const ngraph::Node>& op, std::string& errorMessage) noexcept;
 
 private:
-    void init() override;
     std::vector<mkldnn::memory::format_tag> getDataFormats() const;
     void executeReference();
     void executeBinarization();
@@ -152,8 +144,6 @@ private:
 
     InferenceEngine::Precision inputPrecision = InferenceEngine::Precision::FP32;
     InferenceEngine::Precision outputPrecision = InferenceEngine::Precision::FP32;
-
-    QuantizeOpType quantizeOpType = FakeQuantization;
 
     jit_quantize_params jqp = {};
 
