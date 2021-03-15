@@ -975,56 +975,43 @@ void MKLDNNGraphOptimizer::FuseBinaryConvolutionAndFakeQuantize(MKLDNNGraph &gra
 }
 
 void MKLDNNGraphOptimizer::FusePoolingAndFakeQuantize(MKLDNNGraph &graph) {
-//    auto& graphNodes = graph.GetNodes();
-//
-//    auto isSutableParentNode = [](MKLDNNNodePtr node) {
-//        bool isSutablePooling = node->getType() == Pooling;
-//
-//        if (isSutablePooling) {
-//            auto *poolingLayer = dynamic_cast<PoolingLayer *>(node->getCnnLayer().get());
-//            if (poolingLayer == nullptr)
-//                THROW_IE_EXCEPTION << "Cannot get Pooling layer " << node->getName();
-//
-//            return node->getChildEdges().size() == 1 && poolingLayer->_type == PoolingLayer::AVG;
-//        } else {
-//            return false;
-//        }
-//    };
-//
-//    auto isSutableChildNode = [](MKLDNNNodePtr node) {
-//        if (!node->getCnnLayer())
-//            return false;
-//
-//        if (node->getType() != FakeQuantize)
-//            return false;
-//
-//        auto* fakeQuantizeNode = dynamic_cast<MKLDNNFakeQuantizeNode*>(node.get());
-//        if (fakeQuantizeNode == nullptr)
-//            THROW_IE_EXCEPTION << "Cannot get FakeQuantize layer " << node->getName();
-//
-//        return !fakeQuantizeNode->isBinarization();
-//    };
-//
-//    for (int i = 0; i < graphNodes.size(); i++) {
-//        auto parent = graphNodes[i];
-//        if (!isSutableParentNode(parent)) continue;
-//
-//        auto child = parent->getChildEdgeAt(0)->getChild();
-//        if (!isSutableChildNode(child)) continue;
-//
-//        parent->fuseWith(child);
-//
-//        auto parents = child->parentEdges;
-//        for (size_t i = 0; i < parents.size(); i++) {
-//            auto p_edge = parents[i].lock();
-//            if (p_edge->getParent()->getType() == Pooling)
-//                continue;
-//
-//            removeEdge(graph, p_edge);
-//        }
-//
-//        graph.DropNode(child);
-//    }
+    auto& graphNodes = graph.GetNodes();
+
+    auto isSutableParentNode = [](MKLDNNNodePtr node) {
+        return node->getType() == Pooling && node->getChildEdges().size() == 1 && node->getAlgorithm() == Algorithm::PoolingAvg;
+    };
+
+    auto isSutableChildNode = [](MKLDNNNodePtr node) {
+        if (node->getType() != FakeQuantize)
+            return false;
+
+        auto* fakeQuantizeNode = dynamic_cast<MKLDNNFakeQuantizeNode*>(node.get());
+        if (fakeQuantizeNode == nullptr)
+            THROW_IE_EXCEPTION << "Cannot get FakeQuantize layer " << node->getName();
+
+        return !fakeQuantizeNode->isBinarization();
+    };
+
+    for (int i = 0; i < graphNodes.size(); i++) {
+        auto parent = graphNodes[i];
+        if (!isSutableParentNode(parent)) continue;
+
+        auto child = parent->getChildEdgeAt(0)->getChild();
+        if (!isSutableChildNode(child)) continue;
+
+        child->fuseInto(parent);
+
+        auto parents = child->parentEdges;
+        for (size_t i = 0; i < parents.size(); i++) {
+            auto p_edge = parents[i].lock();
+            if (p_edge->getParent()->getType() == Pooling)
+                continue;
+
+            removeEdge(graph, p_edge);
+        }
+
+        graph.DropNode(child);
+    }
 }
 
 /**
@@ -1117,8 +1104,8 @@ void MKLDNNGraphOptimizer::FuseConvolutionSumAndConvolutionSumActivation(MKLDNNG
         auto parent1 = graphNode->getParentEdgeAt(0)->getParent();
         auto parent2 = graphNode->getParentEdgeAt(1)->getParent();
 
-        bool isSutableParent1 = (parent1->getType() == Convolution || parent1->getType() == BinaryConvolution);
-        bool isSutableParent2 = (parent2->getType() == Convolution || parent2->getType() == BinaryConvolution);
+        bool isSutableParent1 = parent1->getType() == Convolution || parent1->getType() == BinaryConvolution;
+        bool isSutableParent2 = parent2->getType() == Convolution || parent2->getType() == BinaryConvolution;
 
         auto* binConvNode1 = dynamic_cast<MKLDNNBinaryConvolutionNode *>(parent1.get());
         if (binConvNode1) {
