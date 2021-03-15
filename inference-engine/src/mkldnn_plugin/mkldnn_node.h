@@ -661,6 +661,9 @@ public:
     }
 
 protected:
+    bool canBePerformedAsScaleShift() const;
+    bool canFuseSimpleOperation(const MKLDNNNodePtr& node) const;
+
     void setType(Type type) {
         this->type = type;
     }
