@@ -1666,16 +1666,8 @@ bool MKLDNNEltwiseNode::canBeInPlace() const {
     return getParentEdgesAtPort(0)[0].get()->getDims() == getChildEdgesAtPort(0)[0].get()->getDims();
 }
 
-void MKLDNNEltwiseNode::fillScalesAndShifts() {
-    std::shared_ptr<const ngraph::opset1::Constant> secondIn;
+void MKLDNNEltwiseNode::fillScalesAndShifts(const MKLDNNNode *parentNode) {
     const auto fillValuesFrom = [&](const MKLDNNNodePtr& constInput, std::vector<float>& buffer) {
-        if (getParentEdgeAt(1)->getParent()->getType() != Input ||
-            !getParentEdgeAt(1)->getParent()->isConstant() ||
-            !MKLDNNExtensionUtils::isPerTensorOrPerChannelBroadcastable(getParentEdgesAtPort(0)[0]->getDims().ToSizeVector(),
-                                                                        constInput->getChildEdgesAtPort(0)[0]->getDims().ToSizeVector())) {
-            THROW_IE_EXCEPTION << "Fusing Eltwise node with name '" + getName() + "' " << "as post operation is not supported";
-        }
-
         auto *constInputNode = dynamic_cast<MKLDNNInputNode *>(constInput.get());
         auto constBlob = constInputNode->getConstBlob();
         auto srtPtr = constBlob->cbuffer().as<int8_t *>();
@@ -1683,10 +1675,12 @@ void MKLDNNEltwiseNode::fillScalesAndShifts() {
         cpu_convert(srtPtr, &buffer[0], constBlob->getTensorDesc().getPrecision(), Precision::FP32, constBlob->size());
     };
 
+    const size_t constPort = getParentEdgesAtPort(0)[0]->getParent().get() == parentNode ? 1 : 0;
+
     if (one_of(getAlgorithm(), EltwiseMultiply, EltwiseDivide, EltwisePrelu)) {
-        fillValuesFrom(getParentEdgesAtPort(1)[0]->getParent(), scales);
+        fillValuesFrom(getParentEdgesAtPort(constPort)[0]->getParent(), scales);
     } else if (one_of(getAlgorithm(), EltwiseAdd, EltwiseSubtract)) {
-        fillValuesFrom(getParentEdgesAtPort(1)[0]->getParent(), shifts);
+        fillValuesFrom(getParentEdgesAtPort(constPort)[0]->getParent(), shifts);
     } else if (one_of(getAlgorithm(), EltwiseMulAdd)) {
         fillValuesFrom(getParentEdgesAtPort(1)[0]->getParent(), scales);
         fillValuesFrom(getParentEdgesAtPort(2)[0]->getParent(), shifts);
@@ -1738,8 +1732,8 @@ void MKLDNNEltwiseNode::fuseInto(MKLDNNNodePtr& parentNode) {
     // Handling Convolution custom Add node fusing case which is processed via dnnl append_sum() API.
     bool isSpecialConvolutionAddFusing = parentNode->getType() == Convolution && getAlgorithm() == EltwiseAdd &&
             getParentEdgesAtPort(0)[0]->getDims().ToSizeVector() == getParentEdgesAtPort(1)[0]->getDims().ToSizeVector();
-    if (!isSpecialConvolutionAddFusing && canBePerformedAsScaleShift()) {
-        fillScalesAndShifts();
+    if (!isSpecialConvolutionAddFusing && canBePerformedAsScaleShift(parentNode.get())) {
+        fillScalesAndShifts(parentNode.get());
     }
     MKLDNNNode::fuseInto(parentNode);
 }

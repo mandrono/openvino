@@ -662,7 +662,7 @@ public:
     }
 
 protected:
-    bool canBePerformedAsScaleShift() const;
+    bool canBePerformedAsScaleShift(const MKLDNNNode *parentNode = nullptr) const;
     bool canFuseSimpleOperation(const MKLDNNNodePtr& node) const;
 
     void setType(Type type) {

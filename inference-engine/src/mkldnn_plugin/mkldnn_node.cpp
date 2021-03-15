@@ -39,7 +39,7 @@
 #include <nodes/mkldnn_scatter_update_node.h>
 #include <nodes/mkldnn_interpolate_node.h>
 #include <nodes/mkldnn_reference_node.h>
-#include <nodes/mkldnn_quantize_node.h>
+#include <nodes/mkldnn_fake_quantize_node.h>
 #include <mkldnn_types.h>
 #include <dnnl_types.h>
 #include "mkldnn_extension_utils.h"
@@ -1322,28 +1322,47 @@ MKLDNNNode* MKLDNNNode::NodesFactory::create(const std::shared_ptr<ngraph::Node>
     return newNode;
 }
 
-bool MKLDNNNode::canBePerformedAsScaleShift() const {
-    for (size_t i = 1; i < getParentEdges().size(); i++) {
-        if (!getParentEdgeAt(i)->getParent()->isConstant() || getParentEdgeAt(i)->getParent()->getType() != Input) {
+bool MKLDNNNode::canBePerformedAsScaleShift(const MKLDNNNode *parentNode) const {
+    size_t portIntoFuse = 0;
+    for (size_t i = (parentNode == nullptr ? 1 : 0); i < getParentEdges().size(); i++) {
+        MKLDNNNode *node = getParentEdgeAt(i)->getParent().get();
+        if (node == nullptr) {
+            THROW_IE_EXCEPTION << "Cannot get parent node for " << getName() << " on " << i << " port";
+        }
+        if (node == parentNode) {
+            portIntoFuse = i;
+            continue;
+        }
+        if (!node->isConstant() || node->getType() != Input) {
             return false;
         }
     }
-    return one_of(getAlgorithm(), EltwiseAdd, EltwiseMultiply, EltwiseSubtract, EltwiseDivide, EltwisePrelu, EltwiseMulAdd) &&
-                  MKLDNNExtensionUtils::isPerTensorOrPerChannelBroadcastable(getParentEdgeAt(0)->getDims().ToSizeVector(),
-                                                                             getParentEdgeAt(1)->getDims().ToSizeVector());
+
+    const auto isBroadcastableToDataInput = [&]() {
+        const auto dataShape = getParentEdgeAt(portIntoFuse)->getDims().ToSizeVector();
+        for (size_t i = 0; i < getParentEdges().size(); i++) {
+            if (i == portIntoFuse)
+                continue;
+            if (!MKLDNNExtensionUtils::isPerTensorOrPerChannelBroadcastable(dataShape, getParentEdgeAt(i)->getDims().ToSizeVector()))
+                return false;
+        }
+        return true;
+    };
+
+    return one_of(getAlgorithm(), EltwiseAdd, EltwiseMultiply, EltwiseSubtract, EltwiseDivide, EltwisePrelu, EltwiseMulAdd) && isBroadcastableToDataInput();
 }
 
 bool MKLDNNNode::canFuseSimpleOperation(const MKLDNNNodePtr& node) const {
-    if (node->getType() == Quantize) {
-        auto* quantizeNode = dynamic_cast<MKLDNNQuantizeNode*>(node.get());
-        if (quantizeNode == nullptr)
-            THROW_IE_EXCEPTION << "Cannot get quantize layer " << node->getName();
-        return !quantizeNode->isBinarization();
+    if (node->getType() == FakeQuantize) {
+        auto* fakeQuantizeNode = dynamic_cast<MKLDNNFakeQuantizeNode*>(node.get());
+        if (fakeQuantizeNode == nullptr)
+            THROW_IE_EXCEPTION << "Cannot get FakeQuantize layer " << node->getName();
+        return !fakeQuantizeNode->isBinarization();
     } else if (node->getType() == Eltwise) {
         return one_of(node->getAlgorithm(), EltwiseRelu, EltwiseGelu, EltwiseElu, EltwiseSigmoid, EltwiseBoundedRelu, EltwiseClamp, EltwiseTanh,
                                             EltwiseSwish, EltwiseHswish, EltwiseMish, EltwiseHsigmoid, EltwiseRoundHalfToEven,
                                             EltwiseRoundHalfAwayFromZero, EltwiseLinear, EltwiseAbs, EltwiseSquare, EltwiseSqrt) ||
-                      node->canBePerformedAsScaleShift();
+                      node->canBePerformedAsScaleShift(this);
     }
 
     return false;
