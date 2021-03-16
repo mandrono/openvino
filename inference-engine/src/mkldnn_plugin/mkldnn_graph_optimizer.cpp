@@ -67,7 +67,7 @@ void MKLDNNGraphOptimizer::ApplyCommonGraphOptimizations(MKLDNNGraph &graph) {
     FuseClampAndFakeQuantize(graph);
     graph.RemoveDroppedNodes();
 
-    FuseScaleShiftAndFakeQuantize(graph);
+    FuseMulAddAndFakeQuantize(graph);
     graph.RemoveDroppedNodes();
 
 // TODO [NM]: transformation should be implemented w/o using of CNNLayer
@@ -982,14 +982,7 @@ void MKLDNNGraphOptimizer::FusePoolingAndFakeQuantize(MKLDNNGraph &graph) {
     };
 
     auto isSutableChildNode = [](MKLDNNNodePtr node) {
-        if (node->getType() != FakeQuantize)
-            return false;
-
-        auto* fakeQuantizeNode = dynamic_cast<MKLDNNFakeQuantizeNode*>(node.get());
-        if (fakeQuantizeNode == nullptr)
-            THROW_IE_EXCEPTION << "Cannot get FakeQuantize layer " << node->getName();
-
-        return !fakeQuantizeNode->isBinarization();
+        return node->getType() == FakeQuantize && node->getAlgorithm() != Algorithm::FQBinarization;
     };
 
     for (int i = 0; i < graphNodes.size(); i++) {
@@ -1252,20 +1245,6 @@ void MKLDNNGraphOptimizer::FuseMVNAndSimpleOperation(MKLDNNGraph &graph) {
         }
     };
 
-    auto isSutableChildNode = [](MKLDNNNodePtr childNode, MKLDNNNodePtr parentNode) {
-        if (childNode->getType() == FakeQuantize) {
-            auto* fakeQuantizeNode = dynamic_cast<MKLDNNFakeQuantizeNode*>(childNode.get());
-            if (fakeQuantizeNode == nullptr)
-                THROW_IE_EXCEPTION << "CPU node with name '" << childNode->getName() << "' is not a FakeQuantize node.";
-            return !fakeQuantizeNode->isBinarization();
-        } else if (childNode->getType() == Eltwise) {
-            return ((childNode->getAlgorithm() == EltwiseMulAdd || childNode->getAlgorithm() == EltwisePrelu) &&
-                    childNode->canBePerformedAsScaleShift(parentNode.get())) || childNode->getAlgorithm() == EltwiseRelu;
-        }
-
-        return false;
-    };
-
     auto parent = graphNodes.begin();
     while (parent != graphNodes.end()) {
         auto parentNode = *parent;
@@ -1275,7 +1254,7 @@ void MKLDNNGraphOptimizer::FuseMVNAndSimpleOperation(MKLDNNGraph &graph) {
         }
 
         auto childNode = parentNode->getChildEdgeAt(0)->getChild();
-        if (!isSutableChildNode(childNode, parentNode)) {
+        if (!parentNode->canFuse(childNode)) {
             parent++;
             continue;
         }
@@ -1619,14 +1598,7 @@ void MKLDNNGraphOptimizer::FuseClampAndFakeQuantize(MKLDNNGraph &graph) {
     };
 
     auto isSutableFakeQuantizeNode = [](MKLDNNNodePtr node) {
-        if (node->getType() != FakeQuantize)
-            return false;
-
-        auto* fakeQuantizeNode = dynamic_cast<MKLDNNFakeQuantizeNode*>(node.get());
-        if (fakeQuantizeNode == nullptr)
-            THROW_IE_EXCEPTION << "Cannot cast " << node->getName() << " to FakeQuantize node";
-
-        return !fakeQuantizeNode->isBinarization();
+        return node->getType() == FakeQuantize && node->getAlgorithm() != FQBinarization;
     };
 
     auto fuseClampAndFakeQuantizeNodes = [](MKLDNNNodePtr parent, MKLDNNNodePtr child) {
@@ -1667,7 +1639,7 @@ void MKLDNNGraphOptimizer::FuseClampAndFakeQuantize(MKLDNNGraph &graph) {
     }
 }
 
-void MKLDNNGraphOptimizer::FuseScaleShiftAndFakeQuantize(MKLDNNGraph &graph) {
+void MKLDNNGraphOptimizer::FuseMulAddAndFakeQuantize(MKLDNNGraph &graph) {
     auto& graphNodes = graph.GetNodes();
 
     auto isSutableScaleShiftNode = [](MKLDNNNodePtr node) {
@@ -1675,7 +1647,7 @@ void MKLDNNGraphOptimizer::FuseScaleShiftAndFakeQuantize(MKLDNNGraph &graph) {
     };
 
     auto isSutableFakeQuantizeNode = [](MKLDNNNodePtr node) {
-        return node->getType() == FakeQuantize && node->getAlgorithm() != FakeQuantizeBinarization;
+        return node->getType() == FakeQuantize && node->getAlgorithm() != FQBinarization;
     };
 
     auto fuseScaleShiftAndFakeQuantizeNodes = [](MKLDNNNodePtr parent, MKLDNNNodePtr child) {

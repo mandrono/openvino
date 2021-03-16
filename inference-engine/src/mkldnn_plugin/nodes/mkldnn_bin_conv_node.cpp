@@ -1085,10 +1085,7 @@ bool MKLDNNBinaryConvolutionNode::canFuse(const MKLDNNNodePtr& node) const {
         return false;
 
     if (node->getType() == FakeQuantize) {
-        auto* fakeQuantizeNode = dynamic_cast<MKLDNNFakeQuantizeNode*>(node.get());
-        if (fakeQuantizeNode == nullptr)
-            THROW_IE_EXCEPTION << "Cannot get FakeQuantize node " << node->getName();
-        return fakeQuantizeNode->isBinarization();
+        return node->getAlgorithm() != FQBinarization;
     } else if (node->getType() == Eltwise) {
         // Only one Add operation can be fused since it is implemented via output blob reuse
         if (node->getAlgorithm() == EltwiseAdd) {

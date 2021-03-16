@@ -516,9 +516,7 @@ private:
 
                 eltwise_post_op_idx++;
             } else {
-                auto fakeQuantizeNode = dynamic_cast<MKLDNNFakeQuantizeNode*>(eltwiseNode.getFusedWith()[i].get());
-
-                bool do_dequantization = fakeQuantizeNode->getAlgorithm() == FakeQuantization;
+                bool do_dequantization = eltwiseNode.getFusedWith()[i]->getAlgorithm() == FQCommon;
                 bool do_rounding = do_dequantization || jep_.dst_prc == Precision::FP32 || i != eltwiseNode.getFusedWith().size() - 1;
                 int s_idx = vmm_dst.getIdx();
 
@@ -1836,10 +1834,7 @@ bool MKLDNNEltwiseNode::canFuse(const MKLDNNNodePtr& node) const {
     }
 
     if (node->getType() == FakeQuantize) {
-        auto *fakeQuantizeNode = dynamic_cast<MKLDNNFakeQuantizeNode *>(node.get());
-        if (fakeQuantizeNode == nullptr)
-            THROW_IE_EXCEPTION << "Cannot get FakeQuantize layer " << node->getName();
-        return !fakeQuantizeNode->isBinarization();
+        return node->getAlgorithm() != FQBinarization;
     }
 
     return false;

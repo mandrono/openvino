@@ -213,7 +213,7 @@ struct jit_uni_quantization_kernel : public jit_uni_quantize_kernel, public jit_
     };
 
     void generate() override {
-        do_dequantization = jqp_.op_type == FakeQuantization;
+        do_dequantization = jqp_.op_type == FQCommon;
         do_rounding = do_dequantization || jqp_.dst_prc == Precision::FP32;
 
         this->preamble();
@@ -872,7 +872,7 @@ MKLDNNFakeQuantizeNode::MKLDNNFakeQuantizeNode(const std::shared_ptr<ngraph::Nod
         MKLDNNNode(op, eng, cache) {
     std::string errorMessage;
     if (isSupportedOperation(op, errorMessage)) {
-        algorithm = FakeQuantization;
+        algorithm = FQCommon;
         const auto fq = std::dynamic_pointer_cast<const ngraph::opset1::FakeQuantize>(op);
 
         errorPrefix = "FakeQuantize node with name '" + getName() + "' ";
@@ -978,7 +978,7 @@ MKLDNNFakeQuantizeNode::MKLDNNFakeQuantizeNode(const std::shared_ptr<ngraph::Nod
         }
 
         if (binarization) {
-            algorithm = FakeQuantizeBinarization;
+            algorithm = FQBinarization;
 
             binarizationThresholds.resize(axisPaddedSize);
             binarizationOutputMask.resize(axisPaddedSize);
@@ -1079,7 +1079,7 @@ MKLDNNFakeQuantizeNode::MKLDNNFakeQuantizeNode(const std::shared_ptr<ngraph::Nod
                     quantizationOnly = false;
             }
 
-            algorithm = quantizationOnly ? Quantization : FakeQuantization;
+            algorithm = quantizationOnly ? FQQuantization : FQCommon;
         }
 
         if (binarization) {
@@ -1304,7 +1304,7 @@ void MKLDNNFakeQuantizeNode::executeReference() {
     const int H = srcDims.size() == 3 ? srcDims[2] : srcDims.size() > 3 ? srcDims[srcDims.size() - 2] : 1;
     const int W = srcDims.size() > 3 ? srcDims[srcDims.size() - 1] : 1;
 
-    if (jqp.op_type == FakeQuantizeBinarization) {
+    if (jqp.op_type == FQBinarization) {
         size_t tmp = s_str[s_str.size() - 1];
         for (int i = s_str.size() - 1; i > 1; i--) {
             s_str[i] = s_str[i - 1];
@@ -1550,7 +1550,7 @@ void MKLDNNFakeQuantizeNode::execute(mkldnn::stream strm) {
         THROW_IE_EXCEPTION << "CPU quantize node with name '" << getName() << "' doesn't have primitive descriptors.";
 
     if (selectedPrimitiveDescriptor->getImplementationType() != impl_desc_type::ref) {
-        if (jqp.op_type == FakeQuantizeBinarization)
+        if (jqp.op_type == FQBinarization)
             executeBinarization();
         else
             executeQuantization();
@@ -1565,7 +1565,7 @@ void MKLDNNFakeQuantizeNode::appendPostOps(mkldnn::post_ops& ops) {
     // Otherwise it can lead to buffer over-read and performance penalties due to denormals.
     const size_t bufferAlignment = 16;
 
-    if (getAlgorithm() == FakeQuantizeBinarization) {
+    if (getAlgorithm() == FQBinarization) {
         if (!isPostOpDataInitialized) {
             size_t paddedSize = rnd_up(binarizationThresholds.size(), bufferAlignment);
             binarizationThresholds.resize(paddedSize, 0);
@@ -1596,8 +1596,8 @@ void MKLDNNFakeQuantizeNode::appendPostOps(mkldnn::post_ops& ops) {
             outputShiftData.set(outputShift.size(), 1 << 1, &outputShift[0]);
         }
 
-        mkldnn::algorithm alg = getAlgorithm() == FakeQuantization ? mkldnn::algorithm::quantization_quantize_dequantize :
-                                                                     mkldnn::algorithm::quantization_quantize;
+        mkldnn::algorithm alg = getAlgorithm() == FQCommon ? mkldnn::algorithm::quantization_quantize_dequantize :
+                                                             mkldnn::algorithm::quantization_quantize;
 
         ops.append_quantization(alg, &cropLowData, &cropHighData, &inputScaleData, &inputShiftData, &outputScaleData, &outputShiftData);
     }

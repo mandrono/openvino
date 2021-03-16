@@ -27,7 +27,6 @@ private:
     void FuseConvolutionAndDWConvolution(MKLDNNGraph &graph);
     void FuseBinaryConvolutionAndFakeQuantize(MKLDNNGraph &graph);
     void FusePoolingAndFakeQuantize(MKLDNNGraph &graph);
-    void FuseBatchNormWithScale(MKLDNNGraph& graph);
     void FuseConvolutionSumAndConvolutionSumActivation(MKLDNNGraph &graph);
     void FuseMVNAndSimpleOperation(MKLDNNGraph &graph);
     void FuseInterpolateAndSimpleOperation(MKLDNNGraph &graph);
@@ -37,7 +36,7 @@ private:
     void FuseConvolutionAndZeroPoints(MKLDNNGraph &graph);
     void FuseBroadcastAndEltwise(MKLDNNGraph &graph);
     void FuseEltwiseAndSimple(MKLDNNGraph &graph);
-    void FuseScaleShiftAndFakeQuantize(MKLDNNGraph &graph);
+    void FuseMulAddAndFakeQuantize(MKLDNNGraph &graph);
     void FuseClampAndFakeQuantize(MKLDNNGraph &graph);
     void MergeTransposeAndReorder(MKLDNNGraph &graph);
 

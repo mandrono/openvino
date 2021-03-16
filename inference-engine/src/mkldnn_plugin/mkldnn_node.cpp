@@ -1323,14 +1323,14 @@ MKLDNNNode* MKLDNNNode::NodesFactory::create(const std::shared_ptr<ngraph::Node>
 }
 
 bool MKLDNNNode::canBePerformedAsScaleShift(const MKLDNNNode *parentNode) const {
-    size_t portIntoFuse = 0;
+    size_t fusingPort = 0;
     for (size_t i = (parentNode == nullptr ? 1 : 0); i < getParentEdges().size(); i++) {
         MKLDNNNode *node = getParentEdgeAt(i)->getParent().get();
         if (node == nullptr) {
             THROW_IE_EXCEPTION << "Cannot get parent node for " << getName() << " on " << i << " port";
         }
         if (node == parentNode) {
-            portIntoFuse = i;
+            fusingPort = i;
             continue;
         }
         if (!node->isConstant() || node->getType() != Input) {
@@ -1339,9 +1339,9 @@ bool MKLDNNNode::canBePerformedAsScaleShift(const MKLDNNNode *parentNode) const 
     }
 
     const auto isBroadcastableToDataInput = [&]() {
-        const auto dataShape = getParentEdgeAt(portIntoFuse)->getDims().ToSizeVector();
+        const auto dataShape = getParentEdgeAt(fusingPort)->getDims().ToSizeVector();
         for (size_t i = 0; i < getParentEdges().size(); i++) {
-            if (i == portIntoFuse)
+            if (i == fusingPort)
                 continue;
             if (!MKLDNNExtensionUtils::isPerTensorOrPerChannelBroadcastable(dataShape, getParentEdgeAt(i)->getDims().ToSizeVector()))
                 return false;
@@ -1354,10 +1354,7 @@ bool MKLDNNNode::canBePerformedAsScaleShift(const MKLDNNNode *parentNode) const 
 
 bool MKLDNNNode::canFuseSimpleOperation(const MKLDNNNodePtr& node) const {
     if (node->getType() == FakeQuantize) {
-        auto* fakeQuantizeNode = dynamic_cast<MKLDNNFakeQuantizeNode*>(node.get());
-        if (fakeQuantizeNode == nullptr)
-            THROW_IE_EXCEPTION << "Cannot get FakeQuantize layer " << node->getName();
-        return !fakeQuantizeNode->isBinarization();
+        return node->getAlgorithm() != FQBinarization;
     } else if (node->getType() == Eltwise) {
         return one_of(node->getAlgorithm(), EltwiseRelu, EltwiseGelu, EltwiseElu, EltwiseSigmoid, EltwiseBoundedRelu, EltwiseClamp, EltwiseTanh,
                                             EltwiseSwish, EltwiseHswish, EltwiseMish, EltwiseHsigmoid, EltwiseRoundHalfToEven,

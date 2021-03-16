@@ -1387,6 +1387,14 @@ void MKLDNNMVNNode::mvn_blk(const uint8_t* src_data, uint8_t* dst_data, const Si
     }
 }
 
+bool MKLDNNMVNNode::canFuse(const MKLDNNNodePtr& node) const {
+    if (!mayiuse(cpu::x64::sse41)) {
+        return false;
+    }
+
+   return canFuseSimpleOperation(node);
+}
+
 bool MKLDNNMVNNode::created() const {
     return getType() == MVN;
 }

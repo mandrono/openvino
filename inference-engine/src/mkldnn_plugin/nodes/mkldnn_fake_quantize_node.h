@@ -75,7 +75,7 @@ public:
 
     size_t getAxis() const { return axis; }
 
-    bool isBinarization() const { return getAlgorithm() == Algorithm::FakeQuantizeBinarization; }
+    bool isBinarization() const { return getAlgorithm() == Algorithm::FQBinarization; }
 
     const float* getBinarizationTresholdsPtr() const { return &binarizationThresholds[0]; }
     const float* getBinarizationOutputMaskPtr() const { return reinterpret_cast<const float*>(&binarizationOutputMask[0]); }
