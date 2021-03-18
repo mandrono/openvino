@@ -9,7 +9,7 @@
 #include "common/tensor_desc_creator.h"
 #include "ngraph/descriptor/tensor.hpp"
 #include <ie_ngraph_utils.hpp>
-#include "mkldnn_node_algorithm.h"
+#include "cpu_types.h"
 
 #include <string>
 #include <vector>

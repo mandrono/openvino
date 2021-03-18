@@ -28,7 +28,7 @@
 #include <ngraph/ops.hpp>
 #include <ngraph/node.hpp>
 #include <ie_precision.hpp>
-#include "mkldnn_node_algorithm.h"
+#include "cpu_types.h"
 
 namespace MKLDNNPlugin {
 
