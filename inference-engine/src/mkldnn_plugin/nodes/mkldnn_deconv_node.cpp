@@ -231,7 +231,7 @@ void MKLDNNDeconvolutionNode::createDescriptor(const std::vector<InferenceEngine
 
 MKLDNNMemoryDesc MKLDNNDeconvolutionNode::getSrcMemDesc(mkldnn::primitive_desc_iterator &primitive_desc_it, size_t idx) {
     if (idx == 2) {
-        return MKLDNNMemoryDesc(InferenceEngine::TensorDesc(getOriginalInputPrecisions()[2],
+        return MKLDNNMemoryDesc(InferenceEngine::TensorDesc(getOriginalInputPrecisionAtPort(2),
                                                             getParentEdgeAt(2)->getDims().ToSizeVector(),
                                                             TensorDesc::getLayoutByDims(getParentEdgeAt(2)->getDims().ToSizeVector())));
     }

@@ -61,7 +61,7 @@ void MKLDNNGraphOptimizer::ApplyCommonGraphOptimizations(MKLDNNGraph &graph) {
     FuseMultiplyAndAdd(graph);
     graph.RemoveDroppedNodes();
 
-    FuseDeconvolutionAndScaleShifts(graph);
+    FuseDeconvolutionAndSimpleOperation(graph);
     graph.RemoveDroppedNodes();
 
     FuseBroadcastAndEltwise(graph);
@@ -247,7 +247,7 @@ void MKLDNNGraphOptimizer::FuseConvolutionAndBias(MKLDNNGraph &graph) {
     }
 }
 
-void MKLDNNGraphOptimizer::FuseDeconvolutionAndScaleShifts(MKLDNNGraph &graph) {
+void MKLDNNGraphOptimizer::FuseDeconvolutionAndSimpleOperation(MKLDNNGraph &graph) {
     auto& graphNodes = graph.GetNodes();
 
     auto isSuitableParentNode = [](MKLDNNNodePtr node) {
@@ -263,6 +263,7 @@ void MKLDNNGraphOptimizer::FuseDeconvolutionAndScaleShifts(MKLDNNGraph &graph) {
         }
 
         auto childNode = parentNode->getChildEdgeAt(0)->getChild();
+        // at this moment deconvolution supports only depthwise as post op
         if (!childNode->canBePerformedAsScaleShift(parentNode.get())) {
             parent++;
             continue;
