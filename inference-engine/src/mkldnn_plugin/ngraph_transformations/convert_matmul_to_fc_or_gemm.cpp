@@ -110,7 +110,6 @@ MKLDNNPlugin::ConvertMatMulToFC::ConvertMatMulToFC() {
             // Transferring from MatMul representation: [B, I, K] * [B, K, O] = [B, I, O]
             // to FullyConnected representation: [I, K] * [K, O] = [I, O]
             size_t K = *(shape_a_aligned.end() - 1);
-            size_t O = *(shape_b_aligned.end() - 1);
             ngraph::Shape B(shape_a_aligned.begin(), shape_a_aligned.end() - 2);
 
             // Weights normalization
@@ -133,10 +132,7 @@ MKLDNNPlugin::ConvertMatMulToFC::ConvertMatMulToFC() {
             }
 
             // Create FullyConnected
-            std::vector<float> bias_value(O, 0);
-            auto fc_bias = ngraph::opset1::Constant::create(matmul->get_output_element_type(0), ngraph::Shape {O}, bias_value);
-
-            auto fc = std::make_shared<MKLDNNPlugin::FullyConnectedNode>(fc_input_a, fc_input_b, fc_bias, output_shape, matmul->output(0).get_element_type());
+            auto fc = std::make_shared<MKLDNNPlugin::FullyConnectedNode>(fc_input_a, fc_input_b, output_shape, matmul->output(0).get_element_type());
             fc->set_friendly_name(matmul->get_friendly_name());
             new_ops.push_back(fc);
 

@@ -13,9 +13,8 @@ NGRAPH_RTTI_DEFINITION(MKLDNNPlugin::ReshapeFullyConnected, "ReshapeFullyConnect
 
 MKLDNNPlugin::ReshapeFullyConnected::ReshapeFullyConnected() {
     auto fc = ngraph::pattern::wrap_type<MKLDNNPlugin::FullyConnectedNode>({ngraph::pattern::any_input(ngraph::pattern::has_static_shape()),
-                                                      ngraph::pattern::any_input(),
-                                                      ngraph::pattern::any_input()},
-                                                      ngraph::pattern::has_static_shape());
+                                                                            ngraph::pattern::any_input()},
+                                                                            ngraph::pattern::has_static_shape());
 
     ngraph::matcher_pass_callback callback = [this](ngraph::pattern::Matcher& m) {
         auto fc = std::dynamic_pointer_cast<MKLDNNPlugin::FullyConnectedNode> (m.get_match_root());
@@ -45,11 +44,19 @@ MKLDNNPlugin::ReshapeFullyConnected::ReshapeFullyConnected() {
         auto O = fc->input_value(1).get_shape()[0];
         ngraph::Shape output_shape_new{I, O};
 
-        auto fc_new = std::make_shared<MKLDNNPlugin::FullyConnectedNode>(reshape,
-                                                           fc->input_value(1),
-                                                           fc->input_value(2),
-                                                           output_shape_new,
-                                                           fc->get_output_type());
+        std::shared_ptr<ngraph::Node> fc_new;
+        if (fc->get_input_size() == 2) {
+            fc_new = std::make_shared<MKLDNNPlugin::FullyConnectedNode>(reshape,
+                                                                        fc->input_value(1),
+                                                                        output_shape_new,
+                                                                        fc->get_output_type());
+        } else if (fc->get_input_size() == 3) {
+            fc_new = std::make_shared<MKLDNNPlugin::FullyConnectedNode>(reshape,
+                                                                        fc->input_value(1),
+                                                                        fc->input_value(2),
+                                                                        output_shape_new,
+                                                                        fc->get_output_type());
+        }
         new_ops.push_back(fc_new);
 
         if (output_shape != output_shape_new) {

@@ -63,7 +63,7 @@ static const InferenceEngine::details::caseless_unordered_map<std::string, Type>
         { "Result", Output },
         { "Convolution", Convolution },
         { "GroupConvolution", Convolution },
-        { "MatMul", Gemm },
+        { "MatMul", MatMul },
         { "FullyConnected", FullyConnected },
         { "MaxPool", Pooling },
         { "AvgPool", Pooling },

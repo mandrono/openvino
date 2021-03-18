@@ -14,7 +14,7 @@ using namespace LayerTestsDefinitions;
 namespace CPULayerTestsDefinitions {
 
 enum class MatMulNodeType {
-    Gemm,
+    MatMul,
     FullyConnected
 };
 
@@ -46,7 +46,7 @@ public:
         isA = IS.first; isB = IS.second;
 
         std::ostringstream result;
-        result << (nodeType == MatMulNodeType::Gemm ? "Gemm_" : "FullyConnected_");
+        result << (nodeType == MatMulNodeType::MatMul ? "MatMul_" : "FullyConnected_");
         result << "IS_A=" << CommonTestUtils::vec2str(isA) << "_";
         result << "IS_B=" << CommonTestUtils::vec2str(isB) << "_";
         result << "Transp_A=" << transpA << "_";
@@ -69,7 +69,7 @@ protected:
         fusingSpecificParams fusingParams;
         std::tie(basicParamsSet, nodeType, fusingParams) = this->GetParam();
 
-        cpuNodeType = nodeType == MatMulNodeType::Gemm ? "Gemm" : "FullyConnected";
+        cpuNodeType = nodeType == MatMulNodeType::MatMul ? "MatMul" : "FullyConnected";
 
         std::pair<SizeVector, SizeVector> IS;
         SizeVector isA, isB;
@@ -194,7 +194,7 @@ const auto gemmParams = ::testing::Combine(::testing::ValuesIn(IS),
                                            ::testing::ValuesIn(transpose));
 
 const auto testParams = ::testing::Combine(gemmParams,
-                                           ::testing::Values(MatMulNodeType::Gemm),
+                                           ::testing::Values(MatMulNodeType::MatMul),
                                            ::testing::Values(emptyFusingSpec));
 
 INSTANTIATE_TEST_CASE_P(smoke_Check, MatMulLayerCPUTest, testParams, MatMulLayerCPUTest::getTestCaseName);

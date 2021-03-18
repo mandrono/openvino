@@ -13,9 +13,7 @@ NGRAPH_RTTI_DEFINITION(MKLDNNPlugin::ReshapeFullyConnectedFusion, "ReshapeFullyC
 
 MKLDNNPlugin::ReshapeFullyConnectedFusion::ReshapeFullyConnectedFusion() {
     auto m_reshape = ngraph::pattern::wrap_type<ngraph::opset1::Reshape>(ngraph::pattern::has_static_shape());
-    auto m_fc = ngraph::pattern::wrap_type<MKLDNNPlugin::FullyConnectedNode>({m_reshape,
-                                                        ngraph::pattern::any_input(),
-                                                        ngraph::pattern::any_input()});
+    auto m_fc = ngraph::pattern::wrap_type<MKLDNNPlugin::FullyConnectedNode>({m_reshape, ngraph::pattern::any_input()});
 
     ngraph::matcher_pass_callback callback = [=](ngraph::pattern::Matcher &m) {
         auto & pattern_to_output = m.get_pattern_value_map();
@@ -35,11 +33,19 @@ MKLDNNPlugin::ReshapeFullyConnectedFusion::ReshapeFullyConnectedFusion() {
             return false;
         }
 
-        auto new_fc = std::make_shared<MKLDNNPlugin::FullyConnectedNode>(reshape->input_value(0),
-                                                            fc->input_value(1),
-                                                            fc->input_value(2),
-                                                            fc->get_shape(),
-                                                            fc->output(0).get_element_type());
+        std::shared_ptr<ngraph::Node> new_fc;
+        if (fc->get_input_size() == 2) {
+            new_fc = std::make_shared<MKLDNNPlugin::FullyConnectedNode>(reshape->input_value(0),
+                                                                        fc->input_value(1),
+                                                                        fc->get_shape(),
+                                                                        fc->output(0).get_element_type());
+        } else if (fc->get_input_size() == 3) {
+            new_fc = std::make_shared<MKLDNNPlugin::FullyConnectedNode>(reshape->input_value(0),
+                                                                        fc->input_value(1),
+                                                                        fc->input_value(2),
+                                                                        fc->get_shape(),
+                                                                        fc->output(0).get_element_type());
+        }
 
         new_fc->set_friendly_name(fc->get_friendly_name());
         ngraph::copy_runtime_info({reshape, fc}, new_fc);

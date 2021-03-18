@@ -10,7 +10,7 @@
 
 namespace MKLDNNPlugin {
 
-inline void ConvertToLegacyOpset(std::shared_ptr<ngraph::Function> &nGraphFunc) {
+inline void ConvertToCPUSpecificOpset(std::shared_ptr<ngraph::Function> &nGraphFunc) {
     ngraph::pass::Manager manager;
     manager.register_pass<ConvertMatMulToFC>();
     manager.register_pass<ConvertMatMulToGemm>();

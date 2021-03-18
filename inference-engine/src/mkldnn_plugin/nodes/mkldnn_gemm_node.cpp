@@ -18,7 +18,7 @@ using namespace mkldnn;
 using namespace MKLDNNPlugin;
 using namespace InferenceEngine;
 
-bool MKLDNNGemmNode::isSupportedOperation(const std::shared_ptr<ngraph::Node>& op, std::string& errorMessage) noexcept {
+bool MKLDNNMatMulNode::isSupportedOperation(const std::shared_ptr<ngraph::Node>& op, std::string& errorMessage) noexcept {
     try {
         const auto matMul = std::dynamic_pointer_cast<const ngraph::opset1::MatMul>(op);
         if (!matMul) {
@@ -48,7 +48,7 @@ bool MKLDNNGemmNode::isSupportedOperation(const std::shared_ptr<ngraph::Node>& o
     return true;
 }
 
-MKLDNNGemmNode::MKLDNNGemmNode(const std::shared_ptr<ngraph::Node>& op, const mkldnn::engine& eng, MKLDNNWeightsSharing::Ptr &cache) :
+MKLDNNMatMulNode::MKLDNNMatMulNode(const std::shared_ptr<ngraph::Node>& op, const mkldnn::engine& eng, MKLDNNWeightsSharing::Ptr &cache) :
         MKLDNNNode(op, eng, cache) {
     std::string errorMessage;
     if (isSupportedOperation(op, errorMessage)) {
@@ -64,7 +64,7 @@ MKLDNNGemmNode::MKLDNNGemmNode(const std::shared_ptr<ngraph::Node>& op, const mk
     }
 }
 
-void MKLDNNGemmNode::getSupportedDescriptors() {
+void MKLDNNMatMulNode::getSupportedDescriptors() {
     if (getParentEdges().size() != 2)
         THROW_IE_EXCEPTION  << errorPrefix << " has incorrect number of input edges for layer " << getName();
     if (getChildEdges().empty())
@@ -115,7 +115,7 @@ void MKLDNNGemmNode::getSupportedDescriptors() {
         cOffsets.push_back(0);
 }
 
-void MKLDNNGemmNode::initSupportedPrimitiveDescriptors() {
+void MKLDNNMatMulNode::initSupportedPrimitiveDescriptors() {
     if (!supportedPrimitiveDescriptors.empty())
         return;
 
@@ -153,7 +153,7 @@ void MKLDNNGemmNode::initSupportedPrimitiveDescriptors() {
     supportedPrimitiveDescriptors.push_back(PrimitiveDescInfo(config, impl_desc_type::gemm_any, MKLDNNMemory::GetPlainFormat(getChildEdgeAt(0)->getDims())));
 }
 
-void MKLDNNGemmNode::initOptimalPrimitiveDescriptor() {
+void MKLDNNMatMulNode::initOptimalPrimitiveDescriptor() {
     auto selected_pd = getSelectedPrimitiveDescriptor();
     if (selected_pd == nullptr)
         THROW_IE_EXCEPTION  << errorPrefix << " did not set preferable primitive descriptor";
@@ -169,7 +169,7 @@ void MKLDNNGemmNode::initOptimalPrimitiveDescriptor() {
     }
 }
 
-void MKLDNNGemmNode::createPrimitive() {
+void MKLDNNMatMulNode::createPrimitive() {
     auto& dstMemPtr = getChildEdgeAt(0)->getMemoryPtr();
     auto& src0MemPtr = getParentEdgeAt(0)->getMemoryPtr();
     auto& src1MemPtr = getParentEdgeAt(1)->getMemoryPtr();
@@ -212,7 +212,7 @@ inline void process_gemm(char transa, char transb, int M, int N, int K, float al
 }
 
 template<typename T0, typename T1>
-void MKLDNNGemmNode::process_data() {
+void MKLDNNMatMulNode::process_data() {
     auto inDims0 = getParentEdgeAt(0)->getDims();
     auto inDims1 = getParentEdgeAt(1)->getDims();
     auto outDims = getChildEdgeAt(0)->getDims();
@@ -259,7 +259,7 @@ void MKLDNNGemmNode::process_data() {
     }
 }
 
-void MKLDNNGemmNode::execute(mkldnn::stream strm) {
+void MKLDNNMatMulNode::execute(mkldnn::stream strm) {
     switch (getParentEdgeAt(0)->getDesc().getPrecision()) {
         case Precision::FP32:
             process_data<float, float>();
@@ -278,18 +278,18 @@ void MKLDNNGemmNode::execute(mkldnn::stream strm) {
     }
 }
 
-bool MKLDNNGemmNode::created() const {
-    return getType() == Gemm;
+bool MKLDNNMatMulNode::created() const {
+    return getType() == MatMul;
 }
 
-int MKLDNNGemmNode::getMaxBatch() {
+int MKLDNNMatMulNode::getMaxBatch() {
     if (!outDims.empty())
         return outDims[0][0];
     return 0;
 }
 
-InferenceEngine::Precision MKLDNNGemmNode::getRuntimePrecision() const {
+InferenceEngine::Precision MKLDNNMatMulNode::getRuntimePrecision() const {
     return MKLDNNExtensionUtils::getMaxPrecision(getInputPrecisions());
 }
 
-REG_MKLDNN_PRIM_FOR(MKLDNNGemmNode, Gemm);
+REG_MKLDNN_PRIM_FOR(MKLDNNMatMulNode, MatMul);

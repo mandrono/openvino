@@ -48,10 +48,13 @@ protected:
     std::shared_ptr<mkldnn::primitive_attr> initPrimitiveAttr();
 
 private:
+    InferenceEngine::SizeVector weightsDims;
+    InferenceEngine::SizeVector biasesDims;
+
     std::vector<MKLDNNMemoryPtr> PostOpsIntBlobMemory;
     void setPostOps(mkldnn::primitive_attr &attr, bool initWeights);
 
-    bool withBiases = true;
+    bool withBiases = false;
 
     std::string errorPrefix;
     static const size_t DATA_ID = 0;

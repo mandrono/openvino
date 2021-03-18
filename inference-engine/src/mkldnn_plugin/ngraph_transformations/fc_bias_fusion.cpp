@@ -45,20 +45,18 @@ MKLDNNPlugin::FullyConnectedBiasFusion::FullyConnectedBiasFusion() {
 
         ngraph::NodeVector new_ops;
 
-        auto new_bias = std::make_shared<ngraph::opset1::Add>(fc->input(2).get_source_output(), bias);
-        new_ops.push_back(new_bias);
-        std::shared_ptr<ngraph::Node> final_bias = new_bias;
-        if (new_bias->get_shape().size() >= 2) {
+        std::shared_ptr<ngraph::Node> final_bias = bias;
+        if (bias->get_shape().size() >= 2) {
             final_bias = std::make_shared<ngraph::opset1::Reshape>(final_bias, ngraph::opset1::Constant::create(ngraph::element::i64,
                                                                                                                 ngraph::Shape{1}, {-1}), true);
             new_ops.push_back(final_bias);
         }
 
         auto new_fc = std::make_shared<MKLDNNPlugin::FullyConnectedNode>(fc->input(0).get_source_output(),
-                                                           fc->input(1).get_source_output(),
-                                                           final_bias,
-                                                           fc->get_shape(),
-                                                           fc->get_output_type());
+                                                                         fc->input(1).get_source_output(),
+                                                                         final_bias,
+                                                                         fc->get_shape(),
+                                                                         fc->get_output_type());
         new_ops.push_back(new_fc);
 
         new_fc->set_friendly_name(add->get_friendly_name());
