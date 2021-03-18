@@ -59,7 +59,7 @@ INSTANTIATE_TEST_CASE_P(smoke_LrnCheck_3D, LrnLayerTest,
 
 namespace LRN4D {
 
-const std::vector<std::vector<int64_t>> axes = {{1}, {2, 3}};
+const std::vector<std::vector<int64_t>> axes = {{1}, {2, 3}, {3, 2}};
 
 INSTANTIATE_TEST_CASE_P(smoke_LrnCheck_4D, LrnLayerTest,
                         ::testing::Combine(::testing::Values(alpha),
@@ -78,7 +78,7 @@ INSTANTIATE_TEST_CASE_P(smoke_LrnCheck_4D, LrnLayerTest,
 
 namespace LRN5D {
 
-const std::vector<std::vector<int64_t>> axes = {{1}, {2, 3, 4}};
+const std::vector<std::vector<int64_t>> axes = {{1}, {2, 3, 4}, {4, 2, 3}};
 
 INSTANTIATE_TEST_CASE_P(smoke_LrnCheck_5D, LrnLayerTest,
                         ::testing::Combine(::testing::Values(alpha),

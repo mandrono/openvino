@@ -29,28 +29,26 @@ bool MKLDNNLrnNode::isSupportedOperation(const std::shared_ptr<ngraph::Node>& op
             return false;
         }
 
-        const auto isSupportedAxes = [](const std::vector<int64_t> &axes, const size_t &dataRank) {
-            if (axes.size() == 1 && axes[0] == 1) {
-                return true;
-            } else {
-                std::vector<bool> norm(dataRank, false);
-                for (auto &axis : axes) {
-                    if (axis < 0) {
-                        return false;
-                    }
-                    norm[axis] = true;
+        const auto axes = axesNode->cast_vector<int64_t>();
+        const auto dataRank = dataDims.size();
+        if (axes.size() == 1 && axes[0] == 1) {
+            return true;
+        } else {
+            std::vector<bool> norm(dataRank, false);
+            for (auto &axis : axes) {
+                if (axis < 0 || axis >= dataRank) {
+                    errorMessage = "Has incorrect reduction axis: " + std::to_string(axis);
+                    return false;
                 }
+                norm[axis] = true;
+            }
 
-                for (size_t i = 2; i < norm.size(); ++i) {
-                    if (!norm[i]) return false;
+            for (size_t i = 2; i < norm.size(); ++i) {
+                if (!norm[i]) {
+                    errorMessage = "Supports only across channels or across spatial reduction";
+                    return false;
                 }
             }
-            return true;
-        };
-
-        if (!isSupportedAxes(axesNode->cast_vector<int64_t>(), dataDims.size())) {
-            errorMessage = "Supports only across channels or across spatial reduction";
-            return false;
         }
     } catch (...) {
         return false;
