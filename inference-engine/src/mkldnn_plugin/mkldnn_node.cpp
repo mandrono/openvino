@@ -18,7 +18,7 @@
 #include <nodes/mkldnn_crop_node.h>
 #include <nodes/mkldnn_deconv_node.h>
 #include <nodes/mkldnn_eltwise_node.h>
-#include <nodes/mkldnn_gemm_node.h>
+#include <nodes/mkldnn_matmul_node.h>
 #include <nodes/mkldnn_fullyconnected_node.h>
 #include <nodes/mkldnn_generic_node.h>
 #include <nodes/mkldnn_input_node.h>

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-#include "mkldnn_gemm_node.h"
+#include "mkldnn_matmul_node.h"
 #include <string>
 #include <vector>
 #include <memory>
