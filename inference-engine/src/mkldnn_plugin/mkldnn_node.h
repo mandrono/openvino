@@ -52,7 +52,8 @@ enum Type {
     Split,
     Concatenation,
     Eltwise,
-    Gemm,
+    MatMul,
+    Crop,
     Reshape,
     Tile,
     SimplerNMS,
@@ -182,8 +183,8 @@ static std::string NameFromType(Type type) {
             return "Pooling";
         case FullyConnected:
             return "FullyConnected";
-        case Gemm:
-            return "Gemm";
+        case MatMul:
+            return "MatMul";
         case Softmax:
             return "Softmax";
         case Split:
@@ -206,15 +207,8 @@ static std::string NameFromType(Type type) {
             return "Flatten";
         case Pad:
             return "Pad";
-<<<<<<< HEAD
-        case Permute:
-            return "Permute";
-        case StridedSlice:
-            return "StridedSlice";
-=======
         case Transpose:
             return "Transpose";
->>>>>>> [CPU] Permute node migration on nGraph. (#15)
         case Copy:
             return "Copy";
         case MemoryOutput:
