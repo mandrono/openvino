@@ -87,7 +87,7 @@ void MKLDNNConvertNode::initSupportedPrimitiveDescriptors() {
             supportedPrimitiveDescriptors.emplace_back(config, impl_desc_type::unknown, MKLDNNMemoryDesc(config.outConfs.front().desc).getFormat());
         }
     } else {
-        THROW_IE_EXCEPTION<< errorPrefix << " has incorrect number of input/output edges";
+        THROW_IE_EXCEPTION << errorPrefix << " has incorrect number of input/output edges";
     }
 }
 
@@ -97,7 +97,7 @@ void MKLDNNConvertNode::createPrimitive() {
     if (!dstMemPtr || !dstMemPtr->GetPrimitivePtr())
         THROW_IE_EXCEPTION << errorPrefix << " has not allocated destination memory";
     if (!srcMemPtr || !srcMemPtr->GetPrimitivePtr())
-        THROW_IE_EXCEPTION<< errorPrefix << " has not allocated input memory";
+        THROW_IE_EXCEPTION << errorPrefix << " has not allocated input memory";
     if (getSelectedPrimitiveDescriptor() == nullptr)
         THROW_IE_EXCEPTION << errorPrefix << " has nullable preferable primitive descriptor";
 }
