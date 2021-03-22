@@ -49,6 +49,8 @@ MKLDNNTileNode::MKLDNNTileNode(const std::shared_ptr<ngraph::Node>& op, const mk
         const auto tile = std::dynamic_pointer_cast<const ngraph::opset1::Tile>(op);
         const auto repeatsNode = std::dynamic_pointer_cast<const ngraph::opset1::Constant>(tile->get_input_node_shared_ptr(TILE_REPEATS));
         const auto repeats = repeatsNode->cast_vector<int64_t>();
+        // At this moment CPU plug-in supports tiling only per single axis
+        // This behavoiur is guaranteed by ConvertTileToSeqTiles
         for (size_t i = 0; i < repeats.size(); i++) {
             if (repeats[i] > 1) {
                 axis = i;
@@ -56,6 +58,10 @@ MKLDNNTileNode::MKLDNNTileNode(const std::shared_ptr<ngraph::Node>& op, const mk
                 break;
             }
         }
+        if (axis >= tile->get_input_shape(TILE_INPUT).size())
+            THROW_IE_EXCEPTION << errorPrefix << " has incorrect tiling axis: " << axis;
+        if (tiles < 1)
+            THROW_IE_EXCEPTION << errorPrefix << " has incorrect 'repeats' value: " << tiles;
     } else {
         THROW_IE_EXCEPTION_WITH_STATUS(NOT_IMPLEMENTED) << errorMessage;
     }
@@ -97,9 +103,9 @@ void MKLDNNTileNode::createPrimitive() {
     auto& dstMemPtr = getChildEdgeAt(0)->getMemoryPtr();
     auto& srcMemPtr = getParentEdgeAt(0)->getMemoryPtr();
     if (!dstMemPtr || !dstMemPtr->GetPrimitivePtr())
-        THROW_IE_EXCEPTION << errorPrefix << " has didn't allocated destination memory";
+        THROW_IE_EXCEPTION << errorPrefix << " can't get destination memory";
     if (!srcMemPtr || !srcMemPtr->GetPrimitivePtr())
-        THROW_IE_EXCEPTION << errorPrefix << " has didn't allocated input memory";
+        THROW_IE_EXCEPTION << errorPrefix << " can't get input memory";
     if (getSelectedPrimitiveDescriptor() == nullptr)
         THROW_IE_EXCEPTION << errorPrefix << " has nullable preferable primitive descriptor";
 }
