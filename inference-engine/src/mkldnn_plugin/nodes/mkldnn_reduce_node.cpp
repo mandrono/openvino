@@ -1320,58 +1320,43 @@ private:
     }
 };
 
-static bool getKeepDims(const std::shared_ptr<ngraph::Node>& op) {
-    if (const auto reduce = std::dynamic_pointer_cast<ngraph::op::util::ArithmeticReductionKeepDims>(op)) {
-        return reduce->get_keep_dims();
-    } else if (const auto reduce = std::dynamic_pointer_cast<ngraph::op::util::LogicalReductionKeepDims>(op)) {
-        return reduce->get_keep_dims();
-    } else {
-        THROW_IE_EXCEPTION << "Reduce node with name " << op->get_friendly_name()
-                           << " is incompatibility with ArithmeticReductionKeepDims and LogicalReductionKeepDims";
-    }
-}
-
 std::map<const ngraph::DiscreteTypeInfo, std::function<void(const std::shared_ptr<ngraph::Node>&, MKLDNNReduceNode&)>> MKLDNNReduceNode::initializers = {
     {ngraph::opset4::ReduceL1::type_info, [](const std::shared_ptr<ngraph::Node>& op, MKLDNNReduceNode& node) {
         node.algorithm = ReduceL1;
-        node.keep_dims = getKeepDims(op);
     }},
     {ngraph::opset4::ReduceL2::type_info, [](const std::shared_ptr<ngraph::Node>& op, MKLDNNReduceNode& node) {
         node.algorithm = ReduceL2;
-        node.keep_dims = getKeepDims(op);
     }},
     {ngraph::opset1::ReduceLogicalAnd::type_info, [](const std::shared_ptr<ngraph::Node>& op, MKLDNNReduceNode& node) {
         node.algorithm = ReduceAnd;
-        node.keep_dims = getKeepDims(op);
     }},
     {ngraph::opset1::ReduceLogicalOr::type_info, [](const std::shared_ptr<ngraph::Node>& op, MKLDNNReduceNode& node) {
         node.algorithm = ReduceOr;
-        node.keep_dims = getKeepDims(op);
     }},
     {ngraph::opset1::ReduceMax::type_info, [](const std::shared_ptr<ngraph::Node>& op, MKLDNNReduceNode& node) {
         node.algorithm = ReduceMax;
-        node.keep_dims = getKeepDims(op);
     }},
     {ngraph::opset1::ReduceMean::type_info, [](const std::shared_ptr<ngraph::Node>& op, MKLDNNReduceNode& node) {
         node.algorithm = ReduceMean;
-        node.keep_dims = getKeepDims(op);
     }},
     {ngraph::opset1::ReduceMin::type_info, [](const std::shared_ptr<ngraph::Node>& op, MKLDNNReduceNode& node) {
         node.algorithm = ReduceMin;
-        node.keep_dims = getKeepDims(op);
     }},
     {ngraph::opset1::ReduceProd::type_info, [](const std::shared_ptr<ngraph::Node>& op, MKLDNNReduceNode& node) {
         node.algorithm = ReduceProd;
-        node.keep_dims = getKeepDims(op);
     }},
     {ngraph::opset1::ReduceSum::type_info, [](const std::shared_ptr<ngraph::Node>& op, MKLDNNReduceNode& node) {
         node.algorithm = ReduceSum;
-        node.keep_dims = getKeepDims(op);
     }}
 };
 
 bool MKLDNNReduceNode::isSupportedOperation(const std::shared_ptr<ngraph::Node>& op, std::string& errorMessage) noexcept {
     try {
+        if (std::dynamic_pointer_cast<ngraph::op::util::ArithmeticReductionKeepDims>(op) == nullptr &&
+                std::dynamic_pointer_cast<ngraph::op::util::LogicalReductionKeepDims>(op) == nullptr) {
+            errorMessage = "Reduce node with name " + op->get_friendly_name() + " is not derived from ArithmeticReductionKeepDims or LogicalReductionKeepDims";
+            return false;
+        }
         if (initializers.find(op->get_type_info()) == initializers.end()) {
             errorMessage = "Doesn't support Reduce algorithm: " +  std::string(op->get_type_info().name);
             return false;
@@ -1392,6 +1377,11 @@ MKLDNNReduceNode::MKLDNNReduceNode(const std::shared_ptr<ngraph::Node>& op, cons
     if (isSupportedOperation(op, errorMessage)) {
         errorPrefix = "Reduce node with name '" + getName() + "'";
         initializers[op->get_type_info()](op, *this);
+        if (const auto reduce = std::dynamic_pointer_cast<ngraph::op::util::ArithmeticReductionKeepDims>(op)) {
+            keep_dims = reduce->get_keep_dims();
+        } else if (const auto reduce = std::dynamic_pointer_cast<ngraph::op::util::LogicalReductionKeepDims>(op)) {
+            keep_dims = reduce->get_keep_dims();
+        }
     } else {
         THROW_IE_EXCEPTION_WITH_STATUS(NOT_IMPLEMENTED) << errorMessage;
     }
