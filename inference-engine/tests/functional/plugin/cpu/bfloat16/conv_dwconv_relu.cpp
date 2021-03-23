@@ -123,6 +123,8 @@ protected:
 };
 
 TEST_P(ConvDWConvReLU, CompareWithRefImpl) {
+    SKIP_IF_CURRENT_TEST_IS_DISABLED()
+
     test();
 };
 

@@ -6,6 +6,7 @@
 #include <common_test_utils/common_utils.hpp>
 #include "behavior/add_output.hpp"
 #include "functional_test_utils/plugin_cache.hpp"
+#include "functional_test_utils/skip_tests_config.hpp"
 
 std::string AddOutputsTest::getTestCaseName(const testing::TestParamInfo<addOutputsParams> &obj) {
     std::ostringstream results;
@@ -22,6 +23,8 @@ void AddOutputsTest::SetUp() {
 }
 
 TEST_P(AddOutputsTest, smoke_CheckOutputExist) {
+    SKIP_IF_CURRENT_TEST_IS_DISABLED()
+
     std::vector<std::string> expectedOutputs = outputsToAdd;
     for (const auto &out : net.getOutputsInfo()) {
         expectedOutputs.push_back(out.first);
