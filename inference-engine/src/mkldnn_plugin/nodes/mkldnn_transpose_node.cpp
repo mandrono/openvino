@@ -180,7 +180,7 @@ void MKLDNNTransposeNode::getSupportedDescriptors() {
 void MKLDNNTransposeNode::initSupportedPrimitiveDescriptors() {
     if (!supportedPrimitiveDescriptors.empty())
         return;
-//
+
     prec = getOriginalInputPrecisionAtPort(0);
     auto inputDataType = MKLDNNExtensionUtils::IEPrecisionToDataType(prec);
     auto outputDataType = MKLDNNExtensionUtils::IEPrecisionToDataType(prec);
