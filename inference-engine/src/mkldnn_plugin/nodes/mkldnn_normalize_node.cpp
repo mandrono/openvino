@@ -652,6 +652,8 @@ MKLDNNNormalizeL2Node::MKLDNNNormalizeL2Node(const std::shared_ptr<ngraph::Node>
         eps = norm->get_eps();
         epsMode = norm->get_eps_mode() == ngraph::op::EpsMode::MAX ? NormEpsMode::MAX : NormEpsMode::ADD;
         across_spatial = ngraph::shape_size(op->get_input_shape(AXES)) != 1;
+        // One of the corner cases is when axes is an empty list,
+        // then we divide each input element by itself resulting value 1 for all non-zero elements
         cornerCase = op->get_input_shape(AXES).empty();
     } else {
         THROW_IE_EXCEPTION_WITH_STATUS(NOT_IMPLEMENTED) << errorMessage;
@@ -688,13 +690,14 @@ bool MKLDNNNormalizeL2Node::isSupportedOperation(const std::shared_ptr<ngraph::N
             }
             return false;
         };
-        if (!isSupportedAxes(axesNode->cast_vector<size_t>(), dataDims) && ngraph::shape_size(axesNode->get_shape()) != 0) {
-            errorMessage = "Supports only per channel, per channel and per spatial, no reduction cases";
+        const auto axes = axesNode->cast_vector<size_t>();
+        if (!isSupportedAxes(axes, dataDims) && ngraph::shape_size(axesNode->get_shape()) != 0) {
+            errorMessage = "Doesn't support reduction axes: " + vec2str(axes);
             return false;
         }
         const auto mode = norm->get_eps_mode();
         if (mode != ngraph::op::EpsMode::ADD && mode != ngraph::op::EpsMode::MAX) {
-            errorMessage = "Doesn't supports eps_mode: " + ngraph::as_string(mode);
+            errorMessage = "Doesn't support eps_mode: " + ngraph::as_string(mode);
             return false;
         }
     } catch (...) {

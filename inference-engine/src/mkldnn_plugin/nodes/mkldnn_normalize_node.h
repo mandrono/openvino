@@ -95,7 +95,7 @@ private:
     };
     NormEpsMode epsMode = NormEpsMode::ADD;
 
-    float epsApply(const float &modulo) {
+    float epsApply(const float &modulo) const {
         if (epsMode == NormEpsMode::ADD) {
             return modulo + eps;
         } else if (epsMode == NormEpsMode::MAX) {
