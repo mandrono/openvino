@@ -89,6 +89,7 @@ std::vector<std::string> disabledTestPatterns() {
         R"(.*SpaceToDepthLayerTest.*)",
         R"(.*StridedSliceLayerTest.*)",
         R"(.*TensorIteratorTest.*)",
+        R"(.*VariadicSplitPad.*)",
 
         // dynamic batch
         R"(.*ReshapeCheckDynBatch.*)",
