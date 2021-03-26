@@ -134,6 +134,7 @@ static const InferenceEngine::details::caseless_unordered_map<std::string, Type>
 //        { "Softmax", SoftMax },
 //        { "SoftMax", SoftMax },
         { "Split", Split },
+        { "VariadicSplit", Split },
 //        { "Slice", Split },
         { "Concat", Concatenation },
         { "ConvolutionBackpropData", Deconvolution },
