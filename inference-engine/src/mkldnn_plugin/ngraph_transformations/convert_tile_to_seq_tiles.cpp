@@ -43,9 +43,6 @@ MKLDNNPlugin::ConvertTileToSeqTiles::ConvertTileToSeqTiles() {
             }
         }
 
-        if (num_of_tile_dims < 2)
-            return false;
-
         // Will generate sequence of Tile operations if num_of_tile_dims != 1
         // because IE Tile operations supports only one axis to be tiled.
         // To keep op name unique will use special IE specific delimiter ':'
