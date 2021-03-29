@@ -250,12 +250,16 @@ void MKLDNNFullyConnectedNode::createDescriptor(const std::vector<InferenceEngin
         InferenceEngine::SizeVector normalizedOutDims = {outDims[0] * outDims[1], outDims[2]};
         inDesc = InferenceEngine::TensorDesc(inDesc.getPrecision(), normalizedInDims, TensorDesc::getLayoutByDims(normalizedInDims));
         outDesc = InferenceEngine::TensorDesc(outDesc.getPrecision(), normalizedOutDims, TensorDesc::getLayoutByDims(normalizedOutDims));
-   }
+    }
 
     MKLDNNMemoryDesc in_candidate(inDesc);
     MKLDNNMemoryDesc out_candidate(outDesc);
     MKLDNNMemoryDesc wgh_candidate(MKLDNNDims(weightsDims), wdt, mkldnn::memory::format_tag::any);
-
+    // std::cout << getName() << std::endl;
+    // for (size_t i = 0; i < weightsDims.size(); i++) {
+    //     std::cout << weightsDims[i] << " ";
+    // }
+    // std::cout << std::endl;
     if (withBiases) {
         MKLDNNMemoryDesc bias_candidate(MKLDNNDims(inDims[BIAS_ID]), bdt, memory::format_tag::any);
         MKLDNNDescriptor desc(std::shared_ptr<inner_product_forward::desc>(
@@ -273,7 +277,7 @@ void MKLDNNFullyConnectedNode::createDescriptor(const std::vector<InferenceEngin
 MKLDNNMemoryDesc MKLDNNFullyConnectedNode::getSrcMemDesc(mkldnn::primitive_desc_iterator &primitive_desc_it, size_t idx) {
     InferenceEngine::TensorDesc desc = idx > 0 ? MKLDNNMemoryDesc(primitive_desc_it.weights_desc(idx - 1))
                                                : MKLDNNMemoryDesc(primitive_desc_it.src_desc(idx));
-
+    // std::cout << "IDX: " << idx << " " << getName() << std::endl;
     if (desc.getLayout() == InferenceEngine::Layout::ANY) {
         return MKLDNNMemoryDesc(InferenceEngine::TensorDesc(desc.getPrecision(),
                                                             getParentEdgeAt(idx)->getDims().ToSizeVector(),
