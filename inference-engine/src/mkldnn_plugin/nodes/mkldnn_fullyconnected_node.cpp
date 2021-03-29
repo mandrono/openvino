@@ -255,11 +255,6 @@ void MKLDNNFullyConnectedNode::createDescriptor(const std::vector<InferenceEngin
     MKLDNNMemoryDesc in_candidate(inDesc);
     MKLDNNMemoryDesc out_candidate(outDesc);
     MKLDNNMemoryDesc wgh_candidate(MKLDNNDims(weightsDims), wdt, mkldnn::memory::format_tag::any);
-    // std::cout << getName() << std::endl;
-    // for (size_t i = 0; i < weightsDims.size(); i++) {
-    //     std::cout << weightsDims[i] << " ";
-    // }
-    // std::cout << std::endl;
     if (withBiases) {
         MKLDNNMemoryDesc bias_candidate(MKLDNNDims(inDims[BIAS_ID]), bdt, memory::format_tag::any);
         MKLDNNDescriptor desc(std::shared_ptr<inner_product_forward::desc>(
