@@ -686,8 +686,9 @@ MKLDNNMemoryDesc::operator InferenceEngine::TensorDesc() const {
     std::vector<size_t> outer_order(outer_ndims);
     std::iota(outer_order.begin(), outer_order.end(), 0);
     std::sort(outer_order.begin(), outer_order.end(),
-              [&blk_desc] (size_t ind_l, size_t ind_r) {
-        return blk_desc.strides[ind_l] > blk_desc.strides[ind_r];
+              [&blk_desc, &dims] (size_t ind_l, size_t ind_r) {
+        return (blk_desc.strides[ind_l] > blk_desc.strides[ind_r]) ||
+               (blk_desc.strides[ind_l] == blk_desc.strides[ind_r] && dims[ind_l] > dims[ind_r]);
     });
 
     // strides of inner dims. In case of 4i16o4i will be {64, 4, 1}

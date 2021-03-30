@@ -407,6 +407,7 @@ public:
 
     void resolveNotAllocatedEdges();
     virtual void execute(mkldnn::stream strm);
+    virtual void initInputDescriptors(InferenceEngine::LayerConfig &config, const MKLDNNDescriptor &desc, mkldnn::primitive_desc_iterator &itpd);
     virtual void initSupportedPrimitiveDescriptors();
 
     /**
@@ -419,6 +420,8 @@ public:
 
     virtual void selectOptimalPrimitiveDescriptor();
     virtual void initOptimalPrimitiveDescriptor();
+
+    virtual void configureInputDescs(InferenceEngine::LayerConfig &config);
 
     virtual void getSupportedDescriptors() = 0;
     virtual void createDescriptor(const std::vector<InferenceEngine::TensorDesc>& inputDesc,
