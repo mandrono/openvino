@@ -138,24 +138,6 @@ void MKLDNNDeconvolutionNode::setPostOps(mkldnn::primitive_attr &attr) {
     attr.set_post_ops(ops);
 }
 
-void MKLDNNDeconvolutionNode::initInputDescriptors(InferenceEngine::LayerConfig &config, const MKLDNNDescriptor &desc, mkldnn::primitive_desc_iterator &itpd) {
-    for (size_t i = 0; i < descInputNumbers(desc); i++) {
-        InferenceEngine::DataConfig dataConfig;
-        dataConfig.inPlace = -1;
-        dataConfig.constant = false;
-        dataConfig.desc = i == 1 ? getSrcMemDesc(itpd, i) : MKLDNNExtensionUtils::getUninitTensorDesc(getSrcMemDesc(itpd, i));
-        config.inConfs.push_back(dataConfig);
-    }
-}
-
-void MKLDNNDeconvolutionNode::configureInputDescs(InferenceEngine::LayerConfig &config) {
-    for (size_t i = 0; i < config.inConfs.size(); i++) {
-        if (i == 1)
-            continue;
-        config.inConfs[i].desc = MKLDNNMemoryDesc(getConfiguredInputDesc(config, i));
-    }
-}
-
 void MKLDNNDeconvolutionNode::filterSupportedPrimitiveDescriptors() {
     MKLDNNNode::filterSupportedPrimitiveDescriptors();
     filterSupportedDescriptors();

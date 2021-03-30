@@ -20,8 +20,6 @@ public:
     void getSupportedDescriptors() override;
     void createDescriptor(const std::vector<InferenceEngine::TensorDesc>& inputDesc,
                           const std::vector<InferenceEngine::TensorDesc>& outputDesc) override;
-    void initInputDescriptors(InferenceEngine::LayerConfig &config, const MKLDNNDescriptor &desc, mkldnn::primitive_desc_iterator &itpd) override;
-    void configureInputDescs(InferenceEngine::LayerConfig &config) override;
     void createPrimitive() override;
     void filterSupportedPrimitiveDescriptors() override;
     void filterSupportedDescriptors();

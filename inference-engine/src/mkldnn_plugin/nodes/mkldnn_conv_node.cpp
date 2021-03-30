@@ -385,7 +385,7 @@ void MKLDNNConvolutionNode::initSupportedPrimitiveDescriptors() {
                 dataConfig.inPlace = -1;
                 dataConfig.constant = false;
                 dataConfig.desc = getSrcMemDesc(itpd, i);
-                if (!isGrouped/* && i != 1*/)
+                if (!isGrouped)
                     dataConfig.desc = MKLDNNExtensionUtils::getUninitTensorDesc(dataConfig.desc);
                 config.inConfs.push_back(dataConfig);
             }
@@ -632,14 +632,6 @@ void MKLDNNConvolutionNode::initDescriptor(const InferenceEngine::LayerConfig& c
     }
     selectedPD->getConfig() = rightConfig;
 }
-
-// void MKLDNNConvolutionNode::configureInputDescs(InferenceEngine::LayerConfig &config) {
-//     for (size_t i = 0; i < config.inConfs.size(); i++) {
-//         if (i == 1)
-//             continue;
-//         config.inConfs[i].desc = MKLDNNMemoryDesc(getConfiguredInputDesc(config, i));
-//     }
-// }
 
 void MKLDNNConvolutionNode::filterSupportedPrimitiveDescriptors() {
     MKLDNNNode::filterSupportedPrimitiveDescriptors();

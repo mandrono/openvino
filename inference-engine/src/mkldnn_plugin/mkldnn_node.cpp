@@ -588,16 +588,6 @@ void MKLDNNNode::execute(mkldnn::stream strm) {
     }
 }
 
-void MKLDNNNode::initInputDescriptors(InferenceEngine::LayerConfig &config, const MKLDNNDescriptor &desc, mkldnn::primitive_desc_iterator &itpd) {
-    for (size_t i = 0; i < descInputNumbers(desc); i++) {
-        InferenceEngine::DataConfig dataConfig;
-        dataConfig.inPlace = -1;
-        dataConfig.constant = false;
-        dataConfig.desc = MKLDNNExtensionUtils::getUninitTensorDesc(getSrcMemDesc(itpd, i));
-        config.inConfs.push_back(dataConfig);
-    }
-}
-
 void MKLDNNNode::initSupportedPrimitiveDescriptors() {
     if (!supportedPrimitiveDescriptors.empty())
         return;
@@ -608,7 +598,13 @@ void MKLDNNNode::initSupportedPrimitiveDescriptors() {
         while (static_cast<bool>(itpd)) {
             InferenceEngine::LayerConfig config;
             config.dynBatchSupport = true;
-            initInputDescriptors(config, desc, itpd);
+            for (size_t i = 0; i < descInputNumbers(desc); i++) {
+                InferenceEngine::DataConfig dataConfig;
+                dataConfig.inPlace = -1;
+                dataConfig.constant = false;
+                dataConfig.desc = MKLDNNExtensionUtils::getUninitTensorDesc(getSrcMemDesc(itpd, i));
+                config.inConfs.push_back(dataConfig);
+            }
 
             for (size_t i = 0; i < descOutputNumbers(desc); i++) {
                 InferenceEngine::DataConfig dataConfig;
@@ -1087,21 +1083,17 @@ InferenceEngine::TensorDesc MKLDNNNode::getConfiguredOutputDesc(const InferenceE
                                        InferenceEngine::TensorDesc::getLayoutByDims(config.outConfs[idx].desc.getDims()));
 }
 
-void MKLDNNNode::configureInputDescs(InferenceEngine::LayerConfig &config) {
-    for (size_t i = 0; i < config.inConfs.size(); i++) {
-        // TensorDescriptor constructor which is called inside getConfiguredInputDesc incorrectly computes offset field.
-        // What's why MKLDNNMemoryDesc routine is used to reinitialize TD with expected offset values.
-        config.inConfs[i].desc = MKLDNNMemoryDesc(getConfiguredInputDesc(config, i));
-    }
-}
-
 void MKLDNNNode::initOptimalPrimitiveDescriptor() {
     auto selected_pd = getSelectedPrimitiveDescriptor();
     if (selected_pd == nullptr)
         IE_THROW() << "Preferable primitive descriptor is not set.";
     auto config = selected_pd->getConfig();
     if (!isInitConfig(config)) {
-        configureInputDescs(config);
+        for (size_t i = 0; i < config.inConfs.size(); i++) {
+            // TensorDescriptor constructor which is called inside getConfiguredInputDesc incorrectly computes offset field.
+            // What's why MKLDNNMemoryDesc routine is used to reinitialize TD with expected offset values.
+            config.inConfs[i].desc = MKLDNNMemoryDesc(getConfiguredInputDesc(config, i));
+        }
 
         for (size_t i = 0; i < config.outConfs.size(); i++) {
             // TensorDescriptor constructor which is called inside getConfiguredOutputDesc incorrectly computes offset field.
