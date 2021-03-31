@@ -146,6 +146,7 @@ void MKLDNNGraphOptimizer::FuseConvolutionAndBias(MKLDNNGraph &graph) {
     auto isSutableParentNode = [](MKLDNNNodePtr node) {
         return node->getType() == Convolution &&
                node->getChildEdges().size() == 1 &&
+               node->getParentEdges().size() == 2 &&
                node->getFusedWith().empty();
     };
 
