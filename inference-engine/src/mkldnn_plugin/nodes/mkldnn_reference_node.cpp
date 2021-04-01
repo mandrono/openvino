@@ -12,14 +12,9 @@ using namespace MKLDNNPlugin;
 using namespace InferenceEngine;
 using namespace InferenceEngine::details;
 
-<<<<<<< HEAD
 MKLDNNReferenceNode::MKLDNNReferenceNode(const std::shared_ptr<ngraph::Node>& op, const mkldnn::engine& eng, MKLDNNWeightsSharing::Ptr &cache,
                                          const std::string& errorMessage) :
         MKLDNNNode(op, eng, cache), ngraphOp(op), additionalErrorMessage(errorMessage) {
-=======
-MKLDNNReferenceNode::MKLDNNReferenceNode(const std::shared_ptr<ngraph::Node>& op, const mkldnn::engine& eng, MKLDNNWeightsSharing::Ptr &cache) :
-        MKLDNNNode(op, eng, cache), ngraphOp(op) {
->>>>>>> [CPU] Plug-in migration on ngraph initial commit
     setType(Reference);
 }
 
@@ -73,7 +68,6 @@ void MKLDNNReferenceNode::execute(mkldnn::stream strm) {
     }
 
     if (!ngraphOp->evaluate(outputs, inputs)) {
-<<<<<<< HEAD
         std::string errorDetails = "Unsupported operation of type: " + std::string(ngraphOp->get_type_name()) +
                                    " name: " + std::string(ngraphOp->get_friendly_name());
         errorDetails += "\nDetails: \n";
@@ -82,17 +76,9 @@ void MKLDNNReferenceNode::execute(mkldnn::stream strm) {
         }
         errorDetails += "Cannot fallback on ngraph reference implementation (Ngraph::Node::evaluate() is not implemented)";
         IE_THROW(NotImplemented) << errorDetails;
-=======
-        IE_THROW(NotImplemented)
-            << "Cannot find reference implementation for node " << ngraphOp->get_type_name() << " with name '" << ngraphOp->get_friendly_name() << "'.";
->>>>>>> [CPU] Plug-in migration on ngraph initial commit
     }
 }
 
 bool MKLDNNReferenceNode::created() const {
     return getType() == Reference;
 }
-<<<<<<< HEAD
-=======
-REG_MKLDNN_PRIM_FOR(MKLDNNReferenceNode, Reference);
->>>>>>> [CPU] Plug-in migration on ngraph initial commit
