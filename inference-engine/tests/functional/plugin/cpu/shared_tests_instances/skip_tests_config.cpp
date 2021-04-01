@@ -137,6 +137,7 @@ std::vector<std::string> disabledTestPatterns() {
         R"(.*SetBlobTest.*)",
         R"(.*SetBlobOfKindTest.*)",
         R"(.*PreprocessTest.*)",
+        ".*PreprocessConversionTest.*",
 
         R"(.*VariableStateTest.*)",
 
