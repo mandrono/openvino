@@ -103,6 +103,7 @@ static const InferenceEngine::details::caseless_unordered_map<std::string, Type>
         { "HSigmoid", Eltwise },
         { "Round", Eltwise },
         { "PRelu", Eltwise },
+        { "Erf", Eltwise },
         { "Reshape", Reshape },
         { "Softmax", Softmax },
         { "Reorder", Reorder },
