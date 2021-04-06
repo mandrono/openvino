@@ -37,6 +37,7 @@
 #include "utils/blob_dump.h"
 #include "utils/general_utils.h"
 #include "utils/ngraph_utils.hpp"
+#include "utils/cpu_utils.hpp"
 
 #include <ngraph/node.hpp>
 #include <ngraph/function.hpp>
@@ -203,16 +204,6 @@ void MKLDNNGraph::Replicate(const CNNNetwork &network, const MKLDNNExtensionMana
 
     auto orderedOps = func->get_ordered_ops();
 
-
-//    // The input layer precision has to be equal to the InputData precision
-//    std::map<std::string, Precision> changedPrecision;
-//    for (const auto& input : inputs) {
-//        auto inputLayer = getCreatorLayer(input.second->getInputData()).lock();
-//        if (inputLayer) {
-//            inputLayer->precision = inputLayer->outData[0]->getTensorDesc().getPrecision();
-//        }
-//    }
-//
 //  // TODO [NM]: unordered_map is preferred from performance perspective. Needs hash for ngraph::Node
 //    std::unordered_map<ngraph::Node, MKLDNNNodePtr> op2node;
     std::map<std::shared_ptr<ngraph::Node>, MKLDNNNodePtr> op2node;
@@ -236,6 +227,7 @@ void MKLDNNGraph::Replicate(const CNNNetwork &network, const MKLDNNExtensionMana
 
         if (op->get_type_info() == ngraph::op::v0::Parameter::type_info) {
             if (inputsInfo.count(node->getName()) != 0) {
+                node->setOriginalOutputPrecisionAtPort(0, getCorrespondSupportedPrecision(inputsInfo.at(node->getName())->getPrecision()));
                 inputNodesMap[node->getName()] = node;
             }
         }
@@ -251,6 +243,7 @@ void MKLDNNGraph::Replicate(const CNNNetwork &network, const MKLDNNExtensionMana
             }
 
             if (outputsInfo.count(name) != 0) {
+                node->setOriginalInputPrecisionAtPort(0, getCorrespondSupportedPrecision(outputsInfo.at(name)->getPrecision()));
                 outputNodesMap[name] = node;
             }
         }
@@ -294,6 +287,17 @@ void MKLDNNGraph::Replicate(const CNNNetwork &network, const MKLDNNExtensionMana
         graphEdges.push_back(edge);
         graphNodes.push_back(outNode);
     }
+
+    // [NM]: sqash with code below
+    for (const auto &input : inputNodesMap) {
+        const auto precToSet = input.second->getOriginalOutputPrecisionAtPort(0);
+        const auto childEdges = input.second->getChildEdgesAtPort(0);
+        for (size_t i = 0; i < childEdges.size(); i++) {
+            const auto child = childEdges[i]->getChild();
+            child->setOriginalInputPrecisionAtPort(childEdges[i]->getOutputNum(), precToSet);
+        }
+    }
+
 //
 //    // Replicate input nodes
 //    for (const auto& input : inputs) {

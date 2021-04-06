@@ -24,7 +24,9 @@ bool MKLDNNFullyConnectedNode::isSupportedOperation(const std::shared_ptr<ngraph
             errorMessage = "Only legacy FullyConnected operation is supported";
             return false;
         }
-        if (std::dynamic_pointer_cast<const ngraph::opset1::Constant>(fc->get_input_node_shared_ptr(WEIGHTS_ID)) == nullptr) {
+        if (std::dynamic_pointer_cast<const ngraph::opset1::Constant>(fc->get_input_node_shared_ptr(WEIGHTS_ID)) == nullptr &&
+            std::dynamic_pointer_cast<const ngraph::opset1::FakeQuantize>(fc->get_input_node_shared_ptr(WEIGHTS_ID)) == nullptr &&
+                std::dynamic_pointer_cast<const ngraph::opset1::Reshape>(fc->get_input_node_shared_ptr(WEIGHTS_ID)) == nullptr) {
             errorMessage = "Only Constant operation on 'weights' input is supported";
             return false;
         }

@@ -255,11 +255,10 @@ InferenceEngine::Blob::Ptr MKLDNNPlugin::MKLDNNInferRequest::GetBlob(const std::
 
         _inputs[name] = make_blob_with_precision(desc);
         _inputs[name]->allocate();
-        // [NM] TODO mandrono
-        // if (desc.getPrecision() == originPrecision &&
-        //         graph->_meanImages.find(name) == graph->_meanImages.end() && !graph->getProperty().batchLimit) {
-        //     externalPtr[name] = _inputs[name]->buffer();
-        // }
+        if (desc.getPrecision() == originPrecision &&
+                graph->_meanImages.find(name) == graph->_meanImages.end() && !graph->getProperty().batchLimit) {
+            externalPtr[name] = _inputs[name]->buffer();
+        }
         data = _inputs[name];
         checkBlob(data, name, true);
         return data;
@@ -285,10 +284,9 @@ InferenceEngine::Blob::Ptr MKLDNNPlugin::MKLDNNInferRequest::GetBlob(const std::
 
         _outputs[name] = make_blob_with_precision(desc);
         _outputs[name]->allocate();
-        // [NM] TODO mandrono
-        // if (desc.getPrecision() == originPrecision && !graph->getProperty().batchLimit) {
-        //     externalPtr[name] = _outputs[name]->buffer();
-        // }
+        if (desc.getPrecision() == originPrecision && !graph->getProperty().batchLimit) {
+            externalPtr[name] = _outputs[name]->buffer();
+        }
         data = _outputs[name];
         checkBlob(data, name, false);
         return data;
@@ -352,13 +350,12 @@ void MKLDNNPlugin::MKLDNNInferRequest::SetBlob(const std::string& name, const In
                 IE_THROW(ParameterMismatch) << "Failed to set input blob. Blocking descriptor mismatch.";
             }
 
-            // [NM] TODO mandrono: if input precision == FP32 but node precision != FP32 convertion doesn't performed
-            // if (data->getTensorDesc().getPrecision() == InferenceEngine::Precision::FP32 &&
-            //     graph->_meanImages.find(name) == graph->_meanImages.end() && !graph->getProperty().batchLimit) {
-            //     externalPtr[name] = data->buffer();
-            // } else if (externalPtr.find(name) != externalPtr.end()) {
-            //     externalPtr.erase(name);
-            // }
+            if (data->getTensorDesc().getPrecision() == InferenceEngine::Precision::FP32 &&
+                graph->_meanImages.find(name) == graph->_meanImages.end() && !graph->getProperty().batchLimit) {
+                externalPtr[name] = data->buffer();
+            } else if (externalPtr.find(name) != externalPtr.end()) {
+                externalPtr.erase(name);
+            }
             _inputs[name] = data;
         }
     } else {
@@ -385,13 +382,12 @@ void MKLDNNPlugin::MKLDNNInferRequest::SetBlob(const std::string& name, const In
                 IE_THROW(ParameterMismatch) << "Failed to set output blob. Blocking descriptor mismatch.";
         }
 
-        // TODO: [NM]
-        // if (data->getTensorDesc().getPrecision() == InferenceEngine::Precision::FP32 &&
-        //         !graph->getProperty().batchLimit) {
-        //     externalPtr[name] = data->buffer();
-        // } else if (externalPtr.find(name) != externalPtr.end()) {
-        //     externalPtr.erase(name);
-        // }
+        if (data->getTensorDesc().getPrecision() == InferenceEngine::Precision::FP32 &&
+                !graph->getProperty().batchLimit) {
+            externalPtr[name] = data->buffer();
+        } else if (externalPtr.find(name) != externalPtr.end()) {
+            externalPtr.erase(name);
+        }
         _outputs[name] = data;
     }
 }

@@ -142,7 +142,7 @@ static const InferenceEngine::details::caseless_unordered_map<std::string, Type>
 //        { "Eltwise", Eltwise },
 //        { "Mod", Eltwise },
 //        { "Power", Eltwise },
-//        { "StridedSlice", StridedSlice },
+        { "StridedSlice", StridedSlice },
 //        { "Reshape", Reshape },
         { "Tile", Tile },
 //        { "SimplerNMS", SimplerNMS },
@@ -160,7 +160,7 @@ static const InferenceEngine::details::caseless_unordered_map<std::string, Type>
 //        { "RNNSequence", RNNSeq },
         { "FakeQuantize", FakeQuantize },
 //        { "BinaryConvolution", BinaryConvolution },
-//        { "DeformableConvolution", DeformableConvolution },
+        { "DeformableConvolution", DeformableConvolution },
 //        { "TensorIterator", TensorIterator },
 //        { "Loop", TensorIterator },
         { "ReadValue", MemoryInput},  // for construction from name ctor, arbitrary name is used
@@ -1281,19 +1281,19 @@ MKLDNNNode* MKLDNNNode::NodesFactory::create(const std::shared_ptr<ngraph::Node>
         }
     }
 
-    if (newNode == nullptr) {
-        try {
-            std::unique_ptr<MKLDNNNode> ol(new MKLDNNReferenceNode(op, eng, w_cache, errorMessage));
-            if (ol != nullptr && ol->created(extMgr))
-                newNode = ol.release();
-        } catch (const InferenceEngine::Exception& ex) {
-            if (ex.getStatus() != NOT_IMPLEMENTED) {
-                throw;
-            } else {
-                errorMessage += getExceptionDescWithoutStatus(ex);
-            }
-        }
-    }
+    // if (newNode == nullptr) {
+    //     try {
+    //         std::unique_ptr<MKLDNNNode> ol(new MKLDNNReferenceNode(op, eng, w_cache, errorMessage));
+    //         if (ol != nullptr && ol->created(extMgr))
+    //             newNode = ol.release();
+    //     } catch (const InferenceEngine::Exception& ex) {
+    //         if (ex.getStatus() != NOT_IMPLEMENTED) {
+    //             throw;
+    //         } else {
+    //             errorMessage += getExceptionDescWithoutStatus(ex);
+    //         }
+    //     }
+    // }
 
 // TODO [NM]: Not implemented
 //    //  WA-start : TI node requires all attributes to construct internal subgpath
