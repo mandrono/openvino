@@ -65,7 +65,6 @@ std::vector<std::string> disabledTestPatterns() {
         // shared SLT test
         R"(.*BatchToSpaceLayerTest.*)",
         R"(.*BucketizeLayerTest.*)",
-        R"(.*CumSumLayerTest.*)",
         R"(.*DepthToSpaceLayerTest.*)",
         R"(.*EmbeddingBagOffsetsSumLayerTest.*)",
         R"(.*EmbeddingBagPackedSumLayerTest.*)",
@@ -127,7 +126,6 @@ std::vector<std::string> disabledTestPatterns() {
 
         // input/output network
         R"(.*NetWithLayout.*)",
-        R"(.*SetBlobTest.*)",
         R"(.*SetBlobOfKindTest.*)",
         R"(.*PreprocessTest.*)",
         ".*PreprocessConversionTest.*",
