@@ -1281,19 +1281,19 @@ MKLDNNNode* MKLDNNNode::NodesFactory::create(const std::shared_ptr<ngraph::Node>
         }
     }
 
-    if (newNode == nullptr) {
-        try {
-            std::unique_ptr<MKLDNNNode> ol(new MKLDNNReferenceNode(op, eng, w_cache, errorMessage));
-            if (ol != nullptr && ol->created(extMgr))
-                newNode = ol.release();
-        } catch (const InferenceEngine::Exception& ex) {
-            if (ex.getStatus() != NOT_IMPLEMENTED) {
-                throw;
-            } else {
-                errorMessage += getExceptionDescWithoutStatus(ex);
-            }
-        }
-    }
+    // if (newNode == nullptr) {
+    //     try {
+    //         std::unique_ptr<MKLDNNNode> ol(new MKLDNNReferenceNode(op, eng, w_cache, errorMessage));
+    //         if (ol != nullptr && ol->created(extMgr))
+    //             newNode = ol.release();
+    //     } catch (const InferenceEngine::Exception& ex) {
+    //         if (ex.getStatus() != NOT_IMPLEMENTED) {
+    //             throw;
+    //         } else {
+    //             errorMessage += getExceptionDescWithoutStatus(ex);
+    //         }
+    //     }
+    // }
 
 // TODO [NM]: Not implemented
 //    //  WA-start : TI node requires all attributes to construct internal subgpath
