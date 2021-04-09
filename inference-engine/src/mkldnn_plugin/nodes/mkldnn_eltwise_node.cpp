@@ -798,7 +798,15 @@ std::map<const ngraph::DiscreteTypeInfo, std::function<void(const std::shared_pt
         node.algorithm = EltwiseFloorMod;
     }},
     {ngraph::op::v1::Power::type_info, [](const std::shared_ptr<ngraph::Node>& op, MKLDNNEltwiseNode& node) {
-        node.algorithm = EltwisePowerDynamic;
+        const auto alpha = std::dynamic_pointer_cast<const ngraph::opset1::Constant>(op->get_input_node_shared_ptr(1));
+        if (alpha != nullptr && ngraph::shape_size(op->get_input_shape(1)) == 1) {
+            node.algorithm = EltwisePowerStatic;
+            node.alpha = alpha->cast_vector<float>()[0];
+            node.beta = 1.0f;
+            node.gamma = 0.0f;
+        } else {
+            node.algorithm = EltwisePowerDynamic;
+        }
     }},
     {ngraph::op::v1::Equal::type_info, [](const std::shared_ptr<ngraph::Node>& op, MKLDNNEltwiseNode& node) {
         node.algorithm = EltwiseEqual;
@@ -947,9 +955,9 @@ MKLDNNEltwiseNode::MKLDNNEltwiseNode(const std::shared_ptr<ngraph::Node>& op, co
 size_t MKLDNNEltwiseNode::getOpInputsNum() const {
     switch (getAlgorithm()) {
         case EltwiseRelu: case EltwiseGelu: case EltwiseElu: case EltwiseTanh: case EltwiseSigmoid: case EltwiseSquare: case EltwiseAbs: case EltwiseSqrt:
-        case EltwisePowerStatic: case EltwiseLinear: case EltwiseBoundedRelu: case EltwiseSoftRelu: case EltwiseRelu6: case EltwiseExp: case EltwiseClamp:
+        case EltwiseLinear: case EltwiseBoundedRelu: case EltwiseSoftRelu: case EltwiseRelu6: case EltwiseExp: case EltwiseClamp: case EltwiseErf:
         case EltwiseSwish: case EltwiseHswish: case EltwiseMish: case EltwiseHsigmoid: case EltwiseRoundHalfToEven: case EltwiseRoundHalfAwayFromZero:
-        case EltwiseLogicalNot: case EltwiseErf:
+        case EltwiseLogicalNot: case EltwisePowerStatic:
             return 1;
         case EltwiseAdd: case EltwiseSubtract: case EltwiseMultiply: case EltwiseDivide: case EltwiseFloorMod: case EltwiseMod: case EltwiseMaximum:
         case EltwiseMinimum: case EltwiseSquaredDifference: case EltwisePowerDynamic: case EltwiseEqual: case EltwiseNotEqual: case EltwiseGreater:

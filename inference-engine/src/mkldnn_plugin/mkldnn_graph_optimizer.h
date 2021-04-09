@@ -19,6 +19,8 @@ public:
     void ApplyImplSpecificGraphOptimizations(MKLDNNGraph& graph);
 
 private:
+    void DropUnusedConstantNodes(MKLDNNGraph &graph);
+    void ConvertToLegacyOperation(MKLDNNGraph &graph);
     void FuseConvolutionAndBias(MKLDNNGraph &graph);
     void FuseDeconvolutionAndSimpleOperation(MKLDNNGraph &graph);
     void FuseMultiplyAndAdd(MKLDNNGraph &graph);

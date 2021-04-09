@@ -75,9 +75,15 @@ public:
     void fuseInto(MKLDNNNodePtr& parentNode) override;
     InferenceEngine::Precision getRuntimePrecision() const override;
 
+    void setAlpha(float _alpha) { alpha = _alpha; }
+    void setBeta (float _beta) { beta = _beta; }
+    void setGamma(float _gamma) { gamma = _gamma; }
+
     float getAlpha() const { return alpha; }
     float getBeta() const { return beta; }
+    float getGamma() const { return gamma; }
     mkldnn::algorithm getMKLDNNAlgorithm() const { return mkldnnAlgorithm; }
+    void setMKLDNNAlgorithm(mkldnn::algorithm _mkldnnAlgorithm) { mkldnnAlgorithm = _mkldnnAlgorithm; }
 
     bool isWithBroadcast();
     bool isSpecialConvolutionAddFusing() const { return specialConvolutionAddFusing; }
