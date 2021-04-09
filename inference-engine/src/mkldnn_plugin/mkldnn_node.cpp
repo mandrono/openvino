@@ -105,6 +105,8 @@ static const InferenceEngine::details::caseless_unordered_map<std::string, Type>
         { "PRelu", Eltwise },
         { "Erf", Eltwise },
         { "Reshape", Reshape },
+        { "Squeeze", Reshape },
+        { "Unsqueeze", Reshape },
         { "Softmax", Softmax },
         { "Reorder", Reorder },
 
