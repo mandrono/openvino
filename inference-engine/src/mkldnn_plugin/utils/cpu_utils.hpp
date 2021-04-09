@@ -60,7 +60,7 @@ inline bool isEmptyTensorDesc(const InferenceEngine::TensorDesc &td) {
 * precision for convert
 * @return plug-in supported precision or UNSPECIFIED if precision unsupported
 */
-inline InferenceEngine::Precision getCorrespondSupportedPrecision(InferenceEngine::Precision precision) {
+inline InferenceEngine::Precision normalizeToSupportedPrecision(InferenceEngine::Precision precision) {
     switch (precision) {
         case InferenceEngine::Precision::U8:
         case InferenceEngine::Precision::I8:

@@ -1283,6 +1283,7 @@ MKLDNNNode* MKLDNNNode::NodesFactory::create(const std::shared_ptr<ngraph::Node>
         }
     }
 
+    // TODO [NM]: enable after all nodes will be migrated on ngraph
     // if (newNode == nullptr) {
     //     try {
     //         std::unique_ptr<MKLDNNNode> ol(new MKLDNNReferenceNode(op, eng, w_cache, errorMessage));

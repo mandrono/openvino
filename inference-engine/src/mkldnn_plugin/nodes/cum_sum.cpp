@@ -17,6 +17,8 @@ namespace InferenceEngine {
 namespace Extensions {
 namespace Cpu {
 
+using MKLDNNPlugin::TensorDescCreatorTypes;
+
 class CumSumImpl: public ExtLayerBase {
     enum { CUM_SUM_DATA, AXIS, numOfInputs };
     bool exclusive;
@@ -60,7 +62,7 @@ public:
             exclusive = cumsum->is_exclusive();
             reverse = cumsum->is_reverse();
 
-            const auto& dataPrecision = details::convertPrecision(cumsum->get_input_element_type(CUM_SUM_DATA));
+            auto dataPrecision = details::convertPrecision(cumsum->get_input_element_type(CUM_SUM_DATA));
             if (dataPrecision != Precision::I8 && dataPrecision != Precision::U8 && dataPrecision != Precision::I16 && dataPrecision != Precision::I32 &&
                 dataPrecision != Precision::FP32 && dataPrecision != Precision::I64 && dataPrecision != Precision::U64 && dataPrecision != Precision::BF16)
                 IE_THROW() << "CumSum layer with name '" << layerName << "' has unsupported 'data' input precision: " << dataPrecision.name();
@@ -79,33 +81,13 @@ public:
 
             shape = dataShape;
 
-            LayerConfig config;
-            for (size_t i = 0; i < op->get_input_size(); i++) {
-                DataConfig inConfig;
-                inConfig.inPlace = -1;
-                inConfig.constant = false;
-
-                Precision inPrecision = i == 1 ? Precision(Precision::I32) : details::convertPrecision(cumsum->get_input_element_type(i));
-                if (inPrecision == Precision::BF16)
-                    inPrecision = Precision::FP32;
-                const SizeVector& inDims = cumsum->get_input_shape(i);
-                inConfig.desc = TensorDesc(inPrecision, inDims, InferenceEngine::TensorDesc::getLayoutByDims(inDims));
-
-                config.inConfs.push_back(inConfig);
-            }
-            DataConfig outConfig;
-            outConfig.inPlace = -1;
-            outConfig.constant = false;
-            Precision outPrecision = details::convertPrecision(cumsum->get_input_element_type(CUM_SUM_DATA));
-            if (outPrecision == Precision::BF16)
-                outPrecision = Precision::FP32;
-            const SizeVector& outDims = cumsum->get_output_shape(0);
-            outConfig.desc = TensorDesc(outPrecision, outDims, InferenceEngine::TensorDesc::getLayoutByDims(outDims));
-
-            config.outConfs.push_back(outConfig);
-
-            config.dynBatchSupport = false;
-            confs.push_back(config);
+            std::vector<DataConfigurator> inDataConfigurators;
+            if (dataPrecision == Precision::BF16)
+                dataPrecision = Precision::FP32;
+            inDataConfigurators.push_back({TensorDescCreatorTypes::ncsp, dataPrecision});
+            if (op->get_input_size() > 1)
+                inDataConfigurators.push_back({TensorDescCreatorTypes::ncsp, Precision::I32});
+            addConfig(op, inDataConfigurators, {{TensorDescCreatorTypes::ncsp, dataPrecision}});
         } catch (InferenceEngine::Exception &ex) {
             errorMsg = ex.what();
         }

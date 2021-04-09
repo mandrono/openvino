@@ -906,6 +906,7 @@ void MKLDNNGraphOptimizer::FuseConvolutionAndDWConvolution(MKLDNNGraph &graph) {
     // }
 }
 
+// TODO: mandrono: unite with FuseConvolutionAndSimpleOperation
 void MKLDNNGraphOptimizer::FuseConvolutionAndSimpleOperationThroughMaxPool(MKLDNNGraph &graph) {
     auto& graphNodes = graph.GetNodes();
 

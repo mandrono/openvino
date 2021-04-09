@@ -227,7 +227,6 @@ void MKLDNNGraph::Replicate(const CNNNetwork &network, const MKLDNNExtensionMana
 
         if (op->get_type_info() == ngraph::op::v0::Parameter::type_info) {
             if (inputsInfo.count(node->getName()) != 0) {
-                node->setOriginalOutputPrecisionAtPort(0, getCorrespondSupportedPrecision(inputsInfo.at(node->getName())->getPrecision()));
                 inputNodesMap[node->getName()] = node;
             }
         }
@@ -243,7 +242,6 @@ void MKLDNNGraph::Replicate(const CNNNetwork &network, const MKLDNNExtensionMana
             }
 
             if (outputsInfo.count(name) != 0) {
-                node->setOriginalInputPrecisionAtPort(0, getCorrespondSupportedPrecision(outputsInfo.at(name)->getPrecision()));
                 outputNodesMap[name] = node;
             }
         }
@@ -288,13 +286,24 @@ void MKLDNNGraph::Replicate(const CNNNetwork &network, const MKLDNNExtensionMana
         graphNodes.push_back(outNode);
     }
 
-    // [NM]: sqash with code below
-    for (const auto &input : inputNodesMap) {
-        const auto precToSet = input.second->getOriginalOutputPrecisionAtPort(0);
+    // change precision for input/output nodes to avoid extra data conversion when set input/output blobs
+    // also we need to change input/output precisions for consumers/producers to avoid inserting reorder
+    for (auto &input : inputNodesMap) {
+        const auto precToSet = normalizeToSupportedPrecision(inputsInfo.at(input.first)->getPrecision());
+        input.second->setOriginalOutputPrecisionAtPort(0, precToSet);
         const auto childEdges = input.second->getChildEdgesAtPort(0);
         for (size_t i = 0; i < childEdges.size(); i++) {
             const auto child = childEdges[i]->getChild();
             child->setOriginalInputPrecisionAtPort(childEdges[i]->getOutputNum(), precToSet);
+        }
+    }
+    for (auto &output : outputNodesMap) {
+        const auto precToSet = normalizeToSupportedPrecision(outputsInfo.at(output.first)->getPrecision());
+        output.second->setOriginalInputPrecisionAtPort(0, precToSet);
+        const auto parentEdges = output.second->getParentEdgesAtPort(0);
+        for (size_t i = 0; i < parentEdges.size(); i++) {
+            const auto parent = parentEdges[i]->getChild();
+            parent->setOriginalInputPrecisionAtPort(parentEdges[i]->getOutputNum(), precToSet);
         }
     }
 
