@@ -915,7 +915,7 @@ void MKLDNNGraphOptimizer::FuseConvolutionAndDWConvolution(MKLDNNGraph &graph) {
         bool isSupportedParams = conv->getGroupNum() == 1 &&
                 is1x1Convolution(conv) &&  // TODO [oneDNN] : fusing is permitted only with 1x1 convolutions
                 everyone_is(1, strides[strides.size() - 1], strides[strides.size() - 2]) &&
-                one_of(conv->getOriginalOutputPrecisionAtPort(0), Precision::FP32) &&
+                everyone_is(Precision::FP32, conv->getOriginalInputPrecisionAtPort(0), conv->getOriginalOutputPrecisionAtPort(0)) &&
                 node->getChildEdgeAt(0)->getDims().ndims() == 4;
         if (!isSupportedParams) return false;
 
@@ -931,7 +931,8 @@ void MKLDNNGraphOptimizer::FuseConvolutionAndDWConvolution(MKLDNNGraph &graph) {
         if (convParent == nullptr)
             IE_THROW() << "Cannot cast to convolution node " << parentNode->getName();
 
-        if (convParent->getOriginalOutputPrecisionAtPort(0) != convChild->getOriginalOutputPrecisionAtPort(0))
+        if (!everyone_is(Precision::FP32, convParent->getOriginalOutputPrecisionAtPort(0), convChild->getOriginalInputPrecisionAtPort(0),
+                convChild->getOriginalOutputPrecisionAtPort(0)))
             return false;
 
         auto parentOutputPrecision = !parentNode->fusedWith.empty()
@@ -942,7 +943,7 @@ void MKLDNNGraphOptimizer::FuseConvolutionAndDWConvolution(MKLDNNGraph &graph) {
                 ? childNode->fusedWith[childNode->fusedWith.size() - 1]->getOriginalOutputPrecisionAtPort(0)
                 : childNode->getOriginalOutputPrecisionAtPort(0);
 
-        if (parentOutputPrecision != childOutputPrecision)
+        if (!everyone_is(Precision::FP32, parentOutputPrecision, childOutputPrecision))
             return false;
 
         if (!convChild->inputZeroPoints.empty() || !convChild->weightsZeroPoints.empty())
