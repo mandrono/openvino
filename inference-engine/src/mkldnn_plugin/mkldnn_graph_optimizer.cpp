@@ -211,36 +211,50 @@ void MKLDNNGraphOptimizer::ConvertToLegacyOperation(MKLDNNGraph &graph) {
         if (port == -1) continue;
 
         auto eltwise = std::dynamic_pointer_cast<MKLDNNEltwiseNode>(graphNodes[i]);
-        if (graphNodes[i]->getAlgorithm() == EltwisePrelu) {
-            eltwise->setAlpha(getScalarValue(eltwise->getParentEdgesAtPort(1)[0]->getParent()));
+        auto constParent = eltwise->getParentEdgesAtPort(port)[0]->getParent();
+        if (eltwise->getAlgorithm() == EltwisePrelu) {
+            eltwise->setAlpha(getScalarValue(constParent));
             eltwise->setBeta(0.0f);
             eltwise->setMKLDNNAlgorithm(mkldnn::algorithm::eltwise_relu);
-            graphNodes[i]->setAlgorithm(EltwiseRelu);
-        } else if (graphNodes[i]->getAlgorithm() == EltwiseAdd) {
+            eltwise->setAlgorithm(EltwiseRelu);
+        } else if (eltwise->getAlgorithm() == EltwiseAdd) {
             eltwise->setAlpha(1.0f);
             eltwise->setBeta(1.0f);
-            eltwise->setGamma(getScalarValue(eltwise->getParentEdgesAtPort(1)[0]->getParent()));
-            graphNodes[i]->setAlgorithm(EltwisePowerStatic);
-        } else if (graphNodes[i]->getAlgorithm() == EltwiseSubtract) {
+            eltwise->setGamma(getScalarValue(constParent));
+            eltwise->setAlgorithm(EltwisePowerStatic);
+        } else if (eltwise->getAlgorithm() == EltwiseSubtract) {
             eltwise->setAlpha(1.0f);
             eltwise->setBeta(1.0f);
-            eltwise->setGamma(-1.0f * getScalarValue(eltwise->getParentEdgesAtPort(1)[0]->getParent()));
-            graphNodes[i]->setAlgorithm(EltwisePowerStatic);
-        } else if (graphNodes[i]->getAlgorithm() == EltwiseMultiply) {
+            eltwise->setGamma(-1.0f * getScalarValue(constParent));
+            eltwise->setAlgorithm(EltwisePowerStatic);
+        } else if (eltwise->getAlgorithm() == EltwiseMultiply) {
             eltwise->setAlpha(1.0f);
-            eltwise->setBeta(getScalarValue(eltwise->getParentEdgesAtPort(1)[0]->getParent()));
+            eltwise->setBeta(getScalarValue(constParent));
             eltwise->setGamma(0.0f);
-            graphNodes[i]->setAlgorithm(EltwisePowerStatic);
+            eltwise->setAlgorithm(EltwisePowerStatic);
         }
 
-        auto edges = graphNodes[i]->parentEdges;
-        MKLDNNEdgePtr remEdge = edges[port].lock();
-        if (!remEdge)
-            continue;
+        auto edges = eltwise->parentEdges;
+        for (size_t edgeIt = 0; edgeIt < edges.size(); edgeIt++) {
+            MKLDNNEdgePtr remEdge = edges[edgeIt].lock();
+            if (!remEdge)
+                continue;
+            auto parent = remEdge->getParent();
+            if (parent == constParent) {
+                remEdge->drop();
+            } else {
+                int inNum = remEdge->getInputNum();
+                remEdge->drop();
+                removeEdge(graph, remEdge);
+                MKLDNNEdgePtr newEdge(new MKLDNNEdge(parent, eltwise, inNum, 0));
+                auto &graphEdges = graph.GetEdges();
+                graphEdges.push_back(newEdge);
+                parent->addEdge(newEdge);
+            }
+        }
 
-        remEdge->drop();
-        graphNodes[i]->inDims.erase(graphNodes[i]->inDims.begin() + port);
-        graphNodes[i]->removeInputPrecisionAtPort(port);
+        eltwise->inDims.erase(eltwise->inDims.begin() + port);
+        eltwise->removeInputPrecisionAtPort(port);
     }
 }
 

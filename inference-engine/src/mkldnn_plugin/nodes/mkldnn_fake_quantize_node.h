@@ -116,6 +116,8 @@ private:
 
     int levels = -1;
 
+    bool binarization = false;
+
     std::vector<float> binarizationThresholds;
     std::vector<uint32_t> binarizationOutputMask;
 
