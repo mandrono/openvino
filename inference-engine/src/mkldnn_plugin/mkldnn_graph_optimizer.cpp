@@ -1140,7 +1140,12 @@ void MKLDNNGraphOptimizer::FusePoolingAndFakeQuantize(MKLDNNGraph &graph) {
     auto& graphNodes = graph.GetNodes();
 
     auto isSutableParentNode = [](MKLDNNNodePtr node) {
-        return node->getType() == Pooling && node->getChildEdges().size() == 1 && node->getAlgorithm() == Algorithm::PoolingAvg;
+        if (node->getType() == Pooling) {
+            if (!one_of(node->getOriginalInputPrecisionAtPort(0), Precision::U8, Precision::I8))
+                return false;
+            return node->getChildEdges().size() == 1 && node->getAlgorithm() == Algorithm::PoolingAvg;
+        }
+        return false;
     };
 
     auto isSutableChildNode = [](MKLDNNNodePtr node) {
