@@ -1120,6 +1120,22 @@ std::vector<mkldnn::memory::format_tag> MKLDNNFakeQuantizeNode::getDataFormats()
     }
 }
 
+void MKLDNNFakeQuantizeNode::init() {
+    if (binarization) {
+        inputPrecision = Precision::FP32;
+        outputPrecision = Precision::BIN;
+    } else {
+        inputPrecision = getOriginalInputPrecisionAtPort(0);
+        outputPrecision = getOriginalOutputPrecisionAtPort(0);
+
+        if (inputPrecision != Precision::FP32 && inputPrecision != Precision::U8 && inputPrecision != Precision::I8)
+            inputPrecision = Precision::FP32;
+
+        if (outputPrecision != Precision::FP32 && outputPrecision != Precision::U8 && outputPrecision != Precision::I8)
+            outputPrecision = Precision::FP32;
+    }
+}
+
 void MKLDNNFakeQuantizeNode::getSupportedDescriptors() {
     if (getParentEdges().size() != 5)
         IE_THROW() << errorPrefix << "has incorrect number of input edges: " << getParentEdges().size();
@@ -1146,20 +1162,6 @@ void MKLDNNFakeQuantizeNode::getSupportedDescriptors() {
             IE_THROW() << errorPrefix << "doesn't support non per-tensor binarization for axis: " << getAxis();
         if (getAxis() != 0)
             IE_THROW() << errorPrefix << "doesn't support non per-tensor quantization for axis: " << getAxis();
-    }
-
-    if (binarization) {
-        inputPrecision = Precision::FP32;
-        outputPrecision = Precision::BIN;
-    } else {
-        inputPrecision = getOriginalInputPrecisionAtPort(0);
-        outputPrecision = getOriginalOutputPrecisionAtPort(0);
-
-        if (inputPrecision != Precision::FP32 && inputPrecision != Precision::U8 && inputPrecision != Precision::I8)
-            inputPrecision = Precision::FP32;
-
-        if (outputPrecision != Precision::FP32 && outputPrecision != Precision::U8 && outputPrecision != Precision::I8)
-            outputPrecision = Precision::FP32;
     }
 }
 

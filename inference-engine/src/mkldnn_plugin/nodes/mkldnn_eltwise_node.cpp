@@ -26,6 +26,8 @@
 
 #include "ngraph/ngraph.hpp"
 #include <ngraph/opsets/opset1.hpp>
+#include "ngraph_transformations/op/power_static.hpp"
+#include "ngraph_transformations/op/leaky_relu.hpp"
 
 #include <string>
 #include <vector>
@@ -798,15 +800,14 @@ std::map<const ngraph::DiscreteTypeInfo, std::function<void(const std::shared_pt
         node.algorithm = EltwiseFloorMod;
     }},
     {ngraph::op::v1::Power::type_info, [](const std::shared_ptr<ngraph::Node>& op, MKLDNNEltwiseNode& node) {
-        const auto alpha = std::dynamic_pointer_cast<const ngraph::opset1::Constant>(op->get_input_node_shared_ptr(1));
-        if (alpha != nullptr && ngraph::shape_size(op->get_input_shape(1)) == 1) {
-            node.algorithm = EltwisePowerStatic;
-            node.alpha = alpha->cast_vector<float>()[0];
-            node.beta = 1.0f;
-            node.gamma = 0.0f;
-        } else {
-            node.algorithm = EltwisePowerDynamic;
-        }
+        node.algorithm = EltwisePowerDynamic;
+    }},
+    {PowerStaticNode::type_info, [](const std::shared_ptr<ngraph::Node>& op, MKLDNNEltwiseNode& node) {
+        auto powerStatic = getNgraphOpAs<PowerStaticNode>(op);
+        node.algorithm = EltwisePowerStatic;
+        node.alpha = powerStatic->get_power();
+        node.beta = powerStatic->get_scale();
+        node.gamma = powerStatic->get_shift();
     }},
     {ngraph::op::v1::Equal::type_info, [](const std::shared_ptr<ngraph::Node>& op, MKLDNNEltwiseNode& node) {
         node.algorithm = EltwiseEqual;
@@ -841,6 +842,13 @@ std::map<const ngraph::DiscreteTypeInfo, std::function<void(const std::shared_pt
     {ngraph::op::v0::Relu::type_info, [](const std::shared_ptr<ngraph::Node>& op, MKLDNNEltwiseNode& node) {
         node.algorithm = EltwiseRelu;
         node.mkldnnAlgorithm = mkldnn::algorithm::eltwise_relu;
+    }},
+    {LeakyReluNode::type_info, [](const std::shared_ptr<ngraph::Node>& op, MKLDNNEltwiseNode& node) {
+        auto leakyRelu = getNgraphOpAs<LeakyReluNode>(op);
+        node.algorithm = EltwiseRelu;
+        node.mkldnnAlgorithm = mkldnn::algorithm::eltwise_relu;
+        node.alpha = leakyRelu->get_slope();
+        node.beta = 0.0f;
     }},
     {ngraph::op::v0::Gelu::type_info, [](const std::shared_ptr<ngraph::Node>& op, MKLDNNEltwiseNode& node) {
         node.algorithm = EltwiseGelu;

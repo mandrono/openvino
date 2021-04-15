@@ -56,9 +56,6 @@ void MKLDNNGraphOptimizer::ApplyCommonGraphOptimizations(MKLDNNGraph &graph) {
 //    MergeTwoEqualScaleShifts(graph);
 //    graph.RemoveDroppedNodes();
 
-    DropUnusedConstantNodes(graph);
-    graph.RemoveDroppedNodes();
-
     FuseConvolutionAndBias(graph);
     graph.RemoveDroppedNodes();
 
@@ -120,9 +117,6 @@ void MKLDNNGraphOptimizer::ApplyCommonGraphOptimizations(MKLDNNGraph &graph) {
     FuseNormalizeL2AndSimpleOperation(graph);
     graph.RemoveDroppedNodes();
 
-    ConvertToLegacyOperation(graph);
-    graph.RemoveDroppedNodes();
-
     FuseEltwiseAndSimple(graph);
     graph.RemoveDroppedNodes();
 
@@ -146,116 +140,6 @@ void MKLDNNGraphOptimizer::ApplyImplSpecificGraphOptimizations(MKLDNNGraph &grap
     graph.RemoveDroppedNodes();
 
     graph.RemoveDroppedEdges();
-}
-
-void MKLDNNGraphOptimizer::DropUnusedConstantNodes(MKLDNNGraph &graph) {
-    auto& graphNodes = graph.GetNodes();
-
-    const size_t port = 1;
-    auto isSutableNode = [](MKLDNNNodePtr node) {
-        if (one_of(node->getAlgorithm(), EltwisePowerStatic)) {
-            const auto shape = node->getParentEdgesAtPort(port)[0]->getDims().ToSizeVector();
-            return node->getParentEdgesAtPort(port)[0]->getParent()->isConstant() &&
-                   node->getParentEdgesAtPort(port)[0]->getParent()->getType() == Input &&
-                   std::accumulate(shape.begin(), shape.end(), (size_t)1, std::multiplies<size_t>()) ==  1;
-        }
-        return false;
-    };
-
-    for (int i = 0; i < graphNodes.size(); i++) {
-        if (!isSutableNode(graphNodes[i])) continue;
-
-        auto edges = graphNodes[i]->parentEdges;
-        MKLDNNEdgePtr remEdge = edges[port].lock();
-        if (!remEdge)
-            continue;
-
-        remEdge->drop();
-        graphNodes[i]->inDims.erase(graphNodes[i]->inDims.begin() + port);
-        graphNodes[i]->removeInputPrecisionAtPort(port);
-    }
-}
-
-void MKLDNNGraphOptimizer::ConvertToLegacyOperation(MKLDNNGraph &graph) {
-    auto& graphNodes = graph.GetNodes();
-
-    const auto getScalarValue = [&](const MKLDNNNodePtr& constInput) {
-        auto *constInputNode = dynamic_cast<MKLDNNInputNode *>(constInput.get());
-        auto constBlob = constInputNode->getConstBlob();
-        float data = 0.0f;
-        cpu_convert(constBlob->cbuffer().as<int8_t *>(), &data, constBlob->getTensorDesc().getPrecision(), Precision::FP32, 1);
-        return data;
-    };
-
-    auto isSutableNode = [](MKLDNNNodePtr node) {
-        return one_of(node->getAlgorithm(), EltwisePrelu, EltwiseAdd, EltwiseSubtract, EltwiseMultiply) && node->getParentEdges().size() == 2;
-    };
-
-    auto getSutablePort = [](MKLDNNNodePtr node) -> int {
-        int i = 0;
-        if (node->getAlgorithm() == EltwisePrelu)
-            i = 1;
-        for (; i < node->getParentEdges().size(); i++) {
-            const auto shape = node->getParentEdgesAtPort(i)[0]->getDims().ToSizeVector();
-            if (node->getParentEdgesAtPort(i)[0]->getParent()->isConstant() && node->getParentEdgesAtPort(i)[0]->getParent()->getType() == Input &&
-                    std::accumulate(shape.begin(), shape.end(), (size_t)1, std::multiplies<size_t>()) ==  1) {
-                return i;
-            }
-        }
-        return -1;
-    };
-
-    for (int i = 0; i < graphNodes.size(); i++) {
-        if (!isSutableNode(graphNodes[i])) continue;
-        const int port = getSutablePort(graphNodes[i]);
-        if (port == -1) continue;
-
-        auto eltwise = std::dynamic_pointer_cast<MKLDNNEltwiseNode>(graphNodes[i]);
-        auto constParent = eltwise->getParentEdgesAtPort(port)[0]->getParent();
-        if (eltwise->getAlgorithm() == EltwisePrelu) {
-            eltwise->setAlpha(getScalarValue(constParent));
-            eltwise->setBeta(0.0f);
-            eltwise->setMKLDNNAlgorithm(mkldnn::algorithm::eltwise_relu);
-            eltwise->setAlgorithm(EltwiseRelu);
-        } else if (eltwise->getAlgorithm() == EltwiseAdd) {
-            eltwise->setAlpha(1.0f);
-            eltwise->setBeta(1.0f);
-            eltwise->setGamma(getScalarValue(constParent));
-            eltwise->setAlgorithm(EltwisePowerStatic);
-        } else if (eltwise->getAlgorithm() == EltwiseSubtract) {
-            eltwise->setAlpha(1.0f);
-            eltwise->setBeta(1.0f);
-            eltwise->setGamma(-1.0f * getScalarValue(constParent));
-            eltwise->setAlgorithm(EltwisePowerStatic);
-        } else if (eltwise->getAlgorithm() == EltwiseMultiply) {
-            eltwise->setAlpha(1.0f);
-            eltwise->setBeta(getScalarValue(constParent));
-            eltwise->setGamma(0.0f);
-            eltwise->setAlgorithm(EltwisePowerStatic);
-        }
-
-        auto edges = eltwise->parentEdges;
-        for (size_t edgeIt = 0; edgeIt < edges.size(); edgeIt++) {
-            MKLDNNEdgePtr remEdge = edges[edgeIt].lock();
-            if (!remEdge)
-                continue;
-            auto parent = remEdge->getParent();
-            if (parent == constParent) {
-                remEdge->drop();
-            } else {
-                int inNum = remEdge->getInputNum();
-                remEdge->drop();
-                removeEdge(graph, remEdge);
-                MKLDNNEdgePtr newEdge(new MKLDNNEdge(parent, eltwise, inNum, 0));
-                auto &graphEdges = graph.GetEdges();
-                graphEdges.push_back(newEdge);
-                parent->addEdge(newEdge);
-            }
-        }
-
-        eltwise->inDims.erase(eltwise->inDims.begin() + port);
-        eltwise->removeInputPrecisionAtPort(port);
-    }
 }
 
 void MKLDNNGraphOptimizer::FuseConvolutionAndBias(MKLDNNGraph &graph) {

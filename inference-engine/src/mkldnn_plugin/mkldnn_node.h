@@ -578,13 +578,6 @@ public:
         return false;
     }
 
-    void removeInputPrecisionAtPort(size_t port) {
-        if (originalInputPrecisions.size() <= port) {
-            IE_THROW() << "Incorrect input port number for node " << getName();
-        }
-        originalInputPrecisions.erase(originalInputPrecisions.begin() + port);
-    }
-
 protected:
     bool canBePerformedAsScaleShift(const MKLDNNNode *parentNode = nullptr) const;
     bool canFuseSimpleOperation(const MKLDNNNodePtr& node) const;

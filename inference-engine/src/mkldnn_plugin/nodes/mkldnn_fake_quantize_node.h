@@ -109,6 +109,7 @@ public:
     static bool isSupportedOperation(const std::shared_ptr<const ngraph::Node>& op, std::string& errorMessage) noexcept;
 
 private:
+    void init() override;
     std::vector<mkldnn::memory::format_tag> getDataFormats() const;
     void executeReference();
     void executeBinarization();
