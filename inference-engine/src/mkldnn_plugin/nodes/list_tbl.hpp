@@ -61,7 +61,7 @@ MKLDNN_EXTENSION_NODE(ExperimentalDetectronGenerateProposalsSingleImageImpl, Exp
 MKLDNN_EXTENSION_NODE(NonMaxSuppressionImpl, NonMaxSuppressionIEInternal);
 MKLDNN_EXTENSION_NODE(TopKImpl, TopK);
 MKLDNN_EXTENSION_NODE(ShuffleChannelsImpl, ShuffleChannels);
-//MKLDNN_EXTENSION_NODE(SpaceToDepthImpl, SpaceToDepth);
+MKLDNN_EXTENSION_NODE(SpaceToDepthImpl, SpaceToDepth);
 //MKLDNN_EXTENSION_NODE(PowerFileImpl, PowerFile);
 //MKLDNN_EXTENSION_NODE(BatchToSpaceImpl, BatchToSpace);
 //MKLDNN_EXTENSION_NODE(ExperimentalDetectronPriorGridGeneratorImpl, ExperimentalDetectronPriorGridGenerator);

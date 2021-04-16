@@ -87,7 +87,7 @@ set(LAYERS
     ${CMAKE_CURRENT_SOURCE_DIR}/nodes/shuffle_channels.cpp
 #    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/simplernms.cpp
 #    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/space_to_batch.cpp
-#    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/space_to_depth.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/space_to_depth.cpp
 #    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/sparse_fill_empty_rows.cpp
 #    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/sparse_segment_reduce.cpp
 #    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/sparse_weighted_reduce.cpp

@@ -61,7 +61,7 @@ public:
             if (inDims.size() > 5)
                 IE_THROW() << errorPrefix << " doesn't support dimensions with rank greater than 5";
 
-            SizeVector outDims = op->get_output_shape(0);;
+            SizeVector outDims = op->get_output_shape(0);
             if (inDims.size() != outDims.size())
                 IE_THROW() << errorPrefix << " has incorrect number of input/output dimensions";
 
