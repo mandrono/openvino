@@ -75,7 +75,6 @@ std::vector<std::string> disabledTestPatterns() {
         R"(.*ReverseSequenceLayerTest.*)",
         R"(.*RNNCellTest.*)",
         R"(.*RNNSequenceTest.*)",
-        R"(.*SelectLayerTest.*)",
         R"(.*SpaceToBatchLayerTest.*)",
         R"(.*SpaceToDepthLayerTest.*)",
         R"(.*TensorIteratorTest.*)",
