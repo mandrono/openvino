@@ -37,7 +37,7 @@ MKLDNN_EXTENSION_NODE(MathImpl, Softsign);
 MKLDNN_EXTENSION_NODE(MathImpl, Tan);
 //MKLDNN_EXTENSION_NODE(ExperimentalDetectronTopKROIsImpl, ExperimentalDetectronTopKROIs);
 MKLDNN_EXTENSION_NODE(ExtractImagePatchesImpl, ExtractImagePatches);
-//MKLDNN_EXTENSION_NODE(ReverseSequenceImpl, ReverseSequence);
+MKLDNN_EXTENSION_NODE(ReverseSequenceImpl, ReverseSequence);
 MKLDNN_EXTENSION_NODE(DetectionOutputImpl, DetectionOutput);
 //MKLDNN_EXTENSION_NODE(ArgMaxImpl, ArgMax);
 //MKLDNN_EXTENSION_NODE(UnsqueezeImpl, Unsqueeze);
