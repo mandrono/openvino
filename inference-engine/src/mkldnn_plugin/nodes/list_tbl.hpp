@@ -68,7 +68,7 @@ MKLDNN_EXTENSION_NODE(SpaceToDepthImpl, SpaceToDepth);
 //MKLDNN_EXTENSION_NODE(SimplerNMSImpl, SimplerNMS);
 //MKLDNN_EXTENSION_NODE(GRNImpl, GRN);
 //MKLDNN_EXTENSION_NODE(SparseFillEmptyRowsImpl, SparseFillEmptyRows);
-//MKLDNN_EXTENSION_NODE(BucketizeImpl, Bucketize);
+MKLDNN_EXTENSION_NODE(BucketizeImpl, Bucketize);
 MKLDNN_EXTENSION_NODE(CTCGreedyDecoderImpl, CTCGreedyDecoder);
 MKLDNN_EXTENSION_NODE(CTCGreedyDecoderSeqLenImpl, CTCGreedyDecoderSeqLen);
 MKLDNN_EXTENSION_NODE(GatherImpl, Gather);

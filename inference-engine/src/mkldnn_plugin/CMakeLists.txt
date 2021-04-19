@@ -92,7 +92,7 @@ set(LAYERS
 #    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/sparse_segment_reduce.cpp
 #    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/sparse_weighted_reduce.cpp
 #    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/sparse_to_dense.cpp
-#    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/bucketize.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/bucketize.cpp
 #    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/squeeze.cpp
 #    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/topkrois_onnx.cpp
 #    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/unique.cpp
