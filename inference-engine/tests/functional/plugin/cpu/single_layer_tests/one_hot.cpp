@@ -63,12 +63,10 @@ protected:
         std::tie(inFmts, outFmts, priority, selectedType) = cpuParams;
         selectedType = std::string("unknown_") + inPrc.name();
 
-        if (onValue < 0.0f && !outPrc.isSigned()) onValue *= -1.0f;
-        if (offValue < 0.0f && !outPrc.isSigned()) offValue *= -1.0f;
-
+        auto ngOutPrc = FuncTestUtils::PrecisionUtils::convertIE2nGraphPrc(outPrc);
         auto depthConst = ngraph::builder::makeConstant<size_t>(ngraph::element::i32, {}, {depth});
-        auto onConst = ngraph::builder::makeConstant<float>(ngraph::element::f32, {}, {onValue});
-        auto offConst = ngraph::builder::makeConstant<float>(ngraph::element::f32, {}, {offValue});
+        auto onConst = ngraph::builder::makeConstant<float>(ngOutPrc, {}, {onValue});
+        auto offConst = ngraph::builder::makeConstant<float>(ngOutPrc, {}, {offValue});
 
         auto ngPrc = FuncTestUtils::PrecisionUtils::convertIE2nGraphPrc(netPrecision);
         auto inputParams = ngraph::builder::makeParams(ngPrc, { inputShape });

@@ -41,7 +41,7 @@ class ExtractImagePatchesImpl : public ExtLayerBase {
                 return false;
             }
             if (!everyone_is(2, extImgPatcher->get_sizes().size(), extImgPatcher->get_strides().size(), extImgPatcher->get_rates().size())) {
-                errorMessage = "Only support 'sizes', 'strides', 'rates', attributes with rank 2";
+                errorMessage = "Doesn't support 'sizes', 'strides', 'rates', attributes with rank != 2";
                 return false;
             }
         } catch (...) {
