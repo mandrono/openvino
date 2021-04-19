@@ -10,62 +10,69 @@
 #include <cassert>
 #include <set>
 #include "ie_parallel.hpp"
+#include <ngraph/opsets/opset1.hpp>
+#include <ngraph/opsets/opset2.hpp>
+
+using namespace MKLDNNPlugin;
 
 namespace InferenceEngine {
 namespace Extensions {
 namespace Cpu {
 
 class BatchToSpaceImpl: public ExtLayerBase {
-public:
-    explicit BatchToSpaceImpl(const CNNLayer* layer) {
+    bool isSupportedOperation(const std::shared_ptr<ngraph::Node>& op, std::string& errorMessage) noexcept {
         try {
-            const auto batchToSpaceLayer = dynamic_cast<const BatchToSpaceLayer*>(layer);
-            if (!batchToSpaceLayer)
-                IE_THROW() << "'" << layer->name << "' layer is not instance of BatchToSpaceLayer class";
+            const auto batchToSpace = std::dynamic_pointer_cast<const ngraph::opset2::BatchToSpace>(op);
+            if (!batchToSpace) {
+                errorMessage = "Only opset2 BatchToSpace operation is supported";
+                return false;
+            }
+            if (std::dynamic_pointer_cast<const ngraph::opset1::Constant>(op->get_input_node_shared_ptr(1)) == nullptr ||
+                std::dynamic_pointer_cast<const ngraph::opset1::Constant>(op->get_input_node_shared_ptr(2)) == nullptr ||
+                    std::dynamic_pointer_cast<const ngraph::opset1::Constant>(op->get_input_node_shared_ptr(3)) == nullptr) {
+                errorMessage = "Only constant 'block_shape', 'crops_begin', 'crops_end' are supported";
+                return false;
+            }
+        } catch (...) {
+            return false;
+        }
+        return true;
+    }
 
-            if (batchToSpaceLayer->insData.size() != 4 || batchToSpaceLayer->outData.size() != 1)
-                IE_THROW() << "'" << batchToSpaceLayer->name << "' layer has incorrect number of input or output edges!";
+    std::string errorPrefix;
 
-            auto inData = batchToSpaceLayer->insData[0].lock();
-            if (inData == nullptr)
-                IE_THROW() << "'" << batchToSpaceLayer->name << "' layer has nullable input data";
-
-            if (inData->getLayout() != NCHW && inData->getLayout() != NCDHW)
-                IE_THROW() << "'" << batchToSpaceLayer->name << "' layer has unsupported layout: " << inData->getLayout();
-
-            const auto precision = inData->getTensorDesc().getPrecision();
-            const std::set<size_t> supported_precision_sizes = {1, 2, 4, 8};
-            if (supported_precision_sizes.find(precision.size()) == supported_precision_sizes.end())
-                IE_THROW() << "'" << batchToSpaceLayer->name << "' layer has unsupported precision: " << precision.name();
-
-            const SizeVector& in_dims = inData->getTensorDesc().getDims();
-            const SizeVector& out_dims = layer->outData[0]->getTensorDesc().getDims();
-            if (in_dims[1] != out_dims[1])
-                IE_THROW() << "'" << batchToSpaceLayer->name << "' layer has different IN and OUT channels number";
-
-            _block_shape = batchToSpaceLayer->_block_shape;
-            _crops_begin = batchToSpaceLayer->_crops_begin;
-            _crops_end = batchToSpaceLayer->_crops_end;
-
-            LayerConfig config;
-            config.inConfs.resize(batchToSpaceLayer->insData.size());
-            // TODO: remove Const layers
-            for (int i = 0; i < batchToSpaceLayer->insData.size(); i++) {
-                auto inData = batchToSpaceLayer->insData[i].lock();
-                if (inData == nullptr)
-                    IE_THROW() << "'" << batchToSpaceLayer->name << "' layer has nullable input data";
-                config.inConfs[i].desc = TensorDesc(precision,
-                        inData->getTensorDesc().getDims(),
-                        inData->getTensorDesc().getLayout());
+public:
+    explicit BatchToSpaceImpl(const std::shared_ptr<ngraph::Node>& op) {
+        try {
+            std::string errorMessage;
+            if (!isSupportedOperation(op, errorMessage)) {
+                IE_THROW(NotImplemented) << errorMessage;
             }
 
-            DataConfig outConfig;
-            outConfig.desc = TensorDesc(precision,
-                    out_dims,
-                    layer->outData[0]->getTensorDesc().getLayout());
-            config.outConfs.push_back(outConfig);
-            config.dynBatchSupport = false;
-            confs.push_back(config);
+            errorPrefix = "BatchToSpace layer with name '" + op->get_friendly_name() + "'";
+
+            if (op->get_input_size() != 4 || op->get_output_size() != 1)
+                IE_THROW() << errorPrefix << " has incorrect number of input or output edges!";
+
+            const auto precision = details::convertPrecision(op->get_input_element_type(0));
+            const std::set<size_t> supported_precision_sizes = {1, 2, 4, 8};
+            if (supported_precision_sizes.find(precision.size()) == supported_precision_sizes.end())
+                IE_THROW() << errorPrefix << " has unsupported precision: " << precision.name();
+
+            const SizeVector& in_dims = op->get_input_shape(0);
+            const SizeVector& out_dims = op->get_output_shape(0);
+            if (in_dims[1] != out_dims[1])
+                IE_THROW() << errorPrefix << " has different IN and OUT channels number";
+
+            _block_shape = std::dynamic_pointer_cast<const ngraph::opset1::Constant>(op->get_input_node_shared_ptr(1))->cast_vector<size_t>();
+            _crops_begin = std::dynamic_pointer_cast<const ngraph::opset1::Constant>(op->get_input_node_shared_ptr(2))->cast_vector<size_t>();
+            _crops_end = std::dynamic_pointer_cast<const ngraph::opset1::Constant>(op->get_input_node_shared_ptr(3))->cast_vector<size_t>();
+
+            addConfig(op, {{TensorDescCreatorTypes::ncsp, precision},
+                           {TensorDescCreatorTypes::ncsp},
+                           {TensorDescCreatorTypes::ncsp},
+                           {TensorDescCreatorTypes::ncsp}},
+                          {{TensorDescCreatorTypes::ncsp, precision}});
         } catch (InferenceEngine::Exception &ex) {
             errorMsg = ex.what();
         }

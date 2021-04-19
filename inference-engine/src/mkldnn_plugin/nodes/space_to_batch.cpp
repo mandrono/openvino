@@ -10,58 +10,68 @@
 #include <vector>
 #include <set>
 #include <cassert>
+#include <ngraph/opsets/opset2.hpp>
+
+using namespace MKLDNNPlugin;
 
 namespace InferenceEngine {
 namespace Extensions {
 namespace Cpu {
 
 class SpaceToBatchImpl: public ExtLayerBase {
-public:
-    explicit SpaceToBatchImpl(const CNNLayer* layer) {
+    bool isSupportedOperation(const std::shared_ptr<ngraph::Node>& op, std::string& errorMessage) noexcept {
         try {
-            auto spaceToBatchLayer = dynamic_cast<const SpaceToBatchLayer*>(layer);
-            if (!spaceToBatchLayer)
-                IE_THROW() << "'" << layer->name << "' layer is not instance of SpaceToBatchLayer class";
+            const auto spaceToBatch = std::dynamic_pointer_cast<const ngraph::opset2::SpaceToBatch>(op);
+            if (!spaceToBatch) {
+                errorMessage = "Only opset2 SpaceToBatch operation is supported";
+                return false;
+            }
+            if (std::dynamic_pointer_cast<const ngraph::opset1::Constant>(op->get_input_node_shared_ptr(1)) == nullptr ||
+                std::dynamic_pointer_cast<const ngraph::opset1::Constant>(op->get_input_node_shared_ptr(2)) == nullptr ||
+                    std::dynamic_pointer_cast<const ngraph::opset1::Constant>(op->get_input_node_shared_ptr(3)) == nullptr) {
+                errorMessage = "Only constant 'block_shape', 'pads_begin', 'pads_end' are supported";
+                return false;
+            }
+        } catch (...) {
+            return false;
+        }
+        return true;
+    }
 
-            if (spaceToBatchLayer->insData.size() != 4 || spaceToBatchLayer->outData.size() != 1)
-                IE_THROW() << "'" << spaceToBatchLayer->name << "' layer has incorrect number of input or output edges!";
+    std::string errorPrefix;
 
-            auto inData = spaceToBatchLayer->insData[0].lock();
-            if (inData == nullptr)
-                IE_THROW() << "'" << spaceToBatchLayer->name << "' layer has nullable input data";
-
-            if (inData->getLayout() != NCHW && inData->getLayout() != NCDHW)
-                IE_THROW() << "'" << spaceToBatchLayer->name << "' layer has unsupported layout: " << inData->getLayout();
-
-            const auto precision = inData->getTensorDesc().getPrecision();
-            const std::set<size_t> supported_precision_sizes = {1, 2, 4, 8};
-            if (supported_precision_sizes.find(precision.size()) == supported_precision_sizes.end())
-                IE_THROW() << "'" << spaceToBatchLayer->name << "' layer has unsupported precision: " << precision.name();
-
-            const SizeVector& in_dims = inData->getTensorDesc().getDims();
-            const SizeVector& out_dims = layer->outData[0]->getTensorDesc().getDims();
-            if (in_dims[1] != out_dims[1])
-                IE_THROW() << "'" << spaceToBatchLayer->name << "' layer has different IN and OUT channels number";
-
-            _block_shape = spaceToBatchLayer->_block_shape;
-            _pads_begin = spaceToBatchLayer->_pads_begin;
-            _pads_end = spaceToBatchLayer->_pads_end;
-
-            LayerConfig config;
-            config.inConfs.resize(spaceToBatchLayer->insData.size());
-            // TODO: remove Const layers
-            for (int i = 0; i < spaceToBatchLayer->insData.size(); i++) {
-                auto inData = spaceToBatchLayer->insData[i].lock();
-                if (inData == nullptr)
-                    IE_THROW() << "'" << spaceToBatchLayer->name << "' layer has nullable input data";
-                config.inConfs[i].desc = TensorDesc(precision, inData->getTensorDesc().getDims(), inData->getTensorDesc().getLayout());
+public:
+    explicit SpaceToBatchImpl(const std::shared_ptr<ngraph::Node>& op) {
+        try {
+            std::string errorMessage;
+            if (!isSupportedOperation(op, errorMessage)) {
+                IE_THROW(NotImplemented) << errorMessage;
             }
 
-            DataConfig outConfig;
-            outConfig.desc = TensorDesc(precision, out_dims, layer->outData[0]->getTensorDesc().getLayout());
-            config.outConfs.push_back(outConfig);
-            config.dynBatchSupport = false;
-            confs.push_back(config);
+            errorPrefix = "BatchToSpace layer with name '" + op->get_friendly_name() + "'";
+
+            if (op->get_input_size() != 4 || op->get_output_size() != 1)
+                IE_THROW() << errorPrefix << " has incorrect number of input or output edges!";
+
+            const auto precision = details::convertPrecision(op->get_input_element_type(0));
+            const std::set<size_t> supported_precision_sizes = {1, 2, 4, 8};
+            if (supported_precision_sizes.find(precision.size()) == supported_precision_sizes.end())
+                IE_THROW() << errorPrefix << " has unsupported precision: " << precision.name();
+
+            const SizeVector& in_dims = op->get_input_shape(0);
+            const SizeVector& out_dims = op->get_output_shape(0);
+            if (in_dims[1] != out_dims[1])
+                IE_THROW() << errorPrefix << " has different IN and OUT channels number";
+
+            _block_shape = std::dynamic_pointer_cast<const ngraph::opset1::Constant>(op->get_input_node_shared_ptr(1))->cast_vector<size_t>();
+            _pads_begin = std::dynamic_pointer_cast<const ngraph::opset1::Constant>(op->get_input_node_shared_ptr(2))->cast_vector<size_t>();
+            _pads_end = std::dynamic_pointer_cast<const ngraph::opset1::Constant>(op->get_input_node_shared_ptr(3))->cast_vector<size_t>();
+
+            addConfig(op, {{TensorDescCreatorTypes::ncsp, precision},
+                           {TensorDescCreatorTypes::ncsp},
+                           {TensorDescCreatorTypes::ncsp},
+                           {TensorDescCreatorTypes::ncsp}},
+                          {{TensorDescCreatorTypes::ncsp, precision}});
         } catch (InferenceEngine::Exception &ex) {
             errorMsg = ex.what();
         }

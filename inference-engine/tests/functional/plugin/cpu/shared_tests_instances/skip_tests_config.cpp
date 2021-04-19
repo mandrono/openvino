@@ -59,7 +59,7 @@ std::vector<std::string> disabledTestPatterns() {
 
         /* ********************************************************** TEMPORARILY DISABLED TESTS ********************************************************** */
         // shared SLT test
-        R"(.*BatchToSpaceLayerTest.*)",
+        // R"(.*BatchToSpaceLayerTest.*)",
         // R"(.*BucketizeLayerTest.*)",
         // R"(.*ExtractImagePatchesTest.*)",
         R"(.*GRUCellTest.*)",
@@ -74,7 +74,7 @@ std::vector<std::string> disabledTestPatterns() {
         // R"(.*ReverseSequenceLayerTest.*)",
         R"(.*RNNCellTest.*)",
         R"(.*RNNSequenceTest.*)",
-        R"(.*SpaceToBatchLayerTest.*)",
+        // R"(.*SpaceToBatchLayerTest.*)",
         R"(.*TensorIteratorTest.*)",
         R"(.*VariadicSplitPad.*)",
 

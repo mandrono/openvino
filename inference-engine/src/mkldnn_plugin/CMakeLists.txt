@@ -49,7 +49,7 @@ set(LAYERS
     ${CMAKE_CURRENT_SOURCE_DIR}/nodes/mkldnn_reference_node.cpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/nodes/list.cpp
-#    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/batch_to_space.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/batch_to_space.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/nodes/broadcast.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/nodes/ctc_greedy_decoder.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/nodes/ctc_greedy_decoder_seq_len.cpp
@@ -86,7 +86,7 @@ set(LAYERS
     ${CMAKE_CURRENT_SOURCE_DIR}/nodes/select.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/nodes/shuffle_channels.cpp
 #    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/simplernms.cpp
-#    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/space_to_batch.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/space_to_batch.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/nodes/space_to_depth.cpp
 #    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/sparse_fill_empty_rows.cpp
 #    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/sparse_segment_reduce.cpp
