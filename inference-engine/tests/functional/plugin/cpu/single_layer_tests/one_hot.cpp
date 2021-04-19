@@ -63,6 +63,9 @@ protected:
         std::tie(inFmts, outFmts, priority, selectedType) = cpuParams;
         selectedType = std::string("unknown_") + inPrc.name();
 
+        if (onValue < 0.0f && !outPrc.isSigned()) onValue *= -1.0f;
+        if (offValue < 0.0f && !outPrc.isSigned()) offValue *= -1.0f;
+
         auto depthConst = ngraph::builder::makeConstant<size_t>(ngraph::element::i32, {}, {depth});
         auto onConst = ngraph::builder::makeConstant<float>(ngraph::element::f32, {}, {onValue});
         auto offConst = ngraph::builder::makeConstant<float>(ngraph::element::f32, {}, {offValue});

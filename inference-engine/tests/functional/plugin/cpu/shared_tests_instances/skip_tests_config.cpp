@@ -70,7 +70,7 @@ std::vector<std::string> disabledTestPatterns() {
         R"(.*LoopTest.*)",
         R"(.*LSTMCellTest.*)",
         R"(.*LSTMSequenceTest.*)",
-        R"(.*OneHotLayerTest.*)",
+        // R"(.*OneHotLayerTest.*)",
         R"(.*ReverseSequenceLayerTest.*)",
         R"(.*RNNCellTest.*)",
         R"(.*RNNSequenceTest.*)",
@@ -102,7 +102,7 @@ std::vector<std::string> disabledTestPatterns() {
 
         // plug-in specific tests
         R"(.*GatherElementsCPUTest.*)",
-        R"(.*OneHotLayerCPUTest.*)",
+        // R"(.*OneHotLayerCPUTest.*)",
         R"(.*AddConvertToReorderTest.*)",
 
         // InferenceEngine::details::cloneNetwork requires ngraph-based `network` object to clone

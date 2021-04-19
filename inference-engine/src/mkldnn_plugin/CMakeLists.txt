@@ -71,7 +71,7 @@ set(LAYERS
     ${CMAKE_CURRENT_SOURCE_DIR}/nodes/non_max_suppression.cpp
 #    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/log_softmax.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/nodes/math.cpp
-#    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/one_hot.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/one_hot.cpp
 #    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/powerfile.cpp
 #    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/priorbox.cpp
 #    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/priorbox_clustered.cpp
