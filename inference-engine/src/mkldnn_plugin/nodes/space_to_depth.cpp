@@ -10,6 +10,10 @@
 #include <cassert>
 #include <set>
 #include "ie_parallel.hpp"
+#include <utils/general_utils.h>
+#include <ngraph/opsets/opset1.hpp>
+
+using namespace MKLDNNPlugin;
 
 namespace InferenceEngine {
 namespace Extensions {
@@ -21,55 +25,81 @@ class SpaceToDepthImpl: public ExtLayerBase {
         DEPTH_FIRST
     };
 
-public:
-    explicit SpaceToDepthImpl(const CNNLayer* layer) {
+    std::string errorPrefix;
+
+    bool isSupportedOperation(const std::shared_ptr<ngraph::Node>& op, std::string& errorMessage) noexcept {
         try {
-            if (layer->insData.empty() || layer->outData.empty())
-                IE_THROW() << "SpaceToDepth layer with name '" << layer->name << "' has incorrect number of input/output edges";
+            const auto spaceToDepth = std::dynamic_pointer_cast<const ngraph::opset1::SpaceToDepth>(op);
+            if (!spaceToDepth) {
+                errorMessage = "Only opset1 SpaceToDepth operation is supported";
+                return false;
+            }
+            const auto mode = spaceToDepth->get_mode();
+            if (!one_of(mode, ngraph::op::v0::SpaceToDepth::SpaceToDepthMode::BLOCKS_FIRST, ngraph::op::v0::SpaceToDepth::SpaceToDepthMode::DEPTH_FIRST)) {
+                errorMessage = "Does not support mode: " + ngraph::as_string(mode);
+                return false;
+            }
+        } catch (...) {
+            return false;
+        }
+        return true;
+    }
 
-            SizeVector inDims = layer->insData[0].lock()->getTensorDesc().getDims();
-            if (inDims.size() < 3)
-                IE_THROW() << "SpaceToDepth layer with name '" << layer->name << "' has incorrect number of input dimensions";
-
-            if (inDims.size() > 5)
-                IE_THROW() << "DepthToSpace layer with name '" << layer->name << "' doesn't support dimensions with rank greater than 5";
-
-            outDims = layer->outData[0]->getTensorDesc().getDims();
-            if (inDims.size() != outDims.size())
-                IE_THROW() << "SpaceToDepth layer with name '" << layer->name << "' has incorrect number of input/output dimensions";
-
-            std::string modeString = layer->GetParamAsString("mode");
-            if (modeString == "blocks_first") {
-                mode = SpaceToDepthMode::BLOCKS_FIRST;
-            } else if (modeString == "depth_first") {
-                mode = SpaceToDepthMode::DEPTH_FIRST;
-            } else {
-                IE_THROW() << "SpaceToDepth layer with name '" << layer->name << "' doesn't support mode: " << modeString;
+public:
+    explicit SpaceToDepthImpl(const std::shared_ptr<ngraph::Node>& op) {
+        try {
+            std::string errorMessage;
+            if (!isSupportedOperation(op, errorMessage)) {
+                IE_THROW(NotImplemented) << errorMessage;
             }
 
-            blockSize = layer->GetParamAsUInt("block_size", 1);
+            errorPrefix = "SpaceToDepth layer with name '" + op->get_friendly_name() + "'";
+            const auto spaceToDepth = std::dynamic_pointer_cast<const ngraph::opset1::SpaceToDepth>(op);
+
+            if (op->get_input_size() != 1 || op->get_output_size() != 1)
+                IE_THROW() << errorPrefix << " has incorrect number of input/output edges";
+
+            SizeVector inDims = op->get_input_shape(0);
+            if (inDims.size() < 3)
+                IE_THROW() << errorPrefix << " has incorrect number of input dimensions";
+
+            if (inDims.size() > 5)
+                IE_THROW() << errorPrefix << " doesn't support dimensions with rank greater than 5";
+
+            outDims = op->get_output_shape(0);
+            if (inDims.size() != outDims.size())
+                IE_THROW() << errorPrefix << " has incorrect number of input/output dimensions";
+
+            const auto modeNgraph = spaceToDepth->get_mode();
+            if (modeNgraph == ngraph::op::v0::SpaceToDepth::SpaceToDepthMode::BLOCKS_FIRST) {
+                mode = SpaceToDepthMode::BLOCKS_FIRST;
+            } else if (modeNgraph == ngraph::op::v0::SpaceToDepth::SpaceToDepthMode::DEPTH_FIRST) {
+                mode = SpaceToDepthMode::DEPTH_FIRST;
+            } else {
+                IE_THROW() << errorPrefix << " doesn't support mode: " << ngraph::as_string(modeNgraph);
+            }
+
+            blockSize = spaceToDepth->get_block_size();
             if (blockSize == 0)
-                IE_THROW() << layer->name << " Incorrect blockSize parameter is zero!";
+                IE_THROW() << errorPrefix << " has incorrect block_size = 0";
 
             size_t numSpatialDims = inDims.size() - 2;
             blockStep = static_cast<size_t>(std::pow(blockSize, numSpatialDims));
             if (outDims[1] % blockStep)
-                IE_THROW() << "SpaceToDepth layer with name '" << layer->name <<
-                    "' has block_size parameter which is incompatible with input tensor channels dimension size";
+                IE_THROW() << errorPrefix << " has block_size parameter which is incompatible with input tensor channels dimension size";
 
             if (inDims[1] != outDims[1] / blockStep)
-                IE_THROW() << "SpaceToDepth layer with name '" << layer->name << " has incompatible input/output channels";
+                IE_THROW() << errorPrefix << " has incompatible input/output channels";
 
             for (int i = 0; i < numSpatialDims; i++) {
                 if (inDims[i + 2] != outDims[i + 2] * blockSize)
-                    IE_THROW() << "SpaceToDepth layer with name '" << layer->name << " has incompatible spatial dims";
+                    IE_THROW() << errorPrefix << " has incompatible spatial dims";
             }
 
-            auto computePrc = layer->insData[0].lock()->getTensorDesc().getPrecision();
+            auto computePrc = details::convertPrecision(op->get_input_element_type(0));
             const std::set<size_t> supported_precision_sizes = {1, 2, 4, 8};
             if (supported_precision_sizes.find(computePrc.size()) == supported_precision_sizes.end())
-                IE_THROW() << "SpaceToDepth layer with name '" << layer->name << " doesn't support precision: " << computePrc.name();
-
+                IE_THROW() << errorPrefix << " doesn't support precision: " << computePrc.name();
 
             if (inDims.size() == 4 || inDims.size() == 5) {
                 LayerConfig config;
