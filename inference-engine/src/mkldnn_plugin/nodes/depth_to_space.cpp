@@ -48,6 +48,11 @@ class DepthToSpaceImpl: public ExtLayerBase {
 public:
     explicit DepthToSpaceImpl(const std::shared_ptr<ngraph::Node>& op) {
         try {
+            std::string errorMessage;
+            if (!isSupportedOperation(op, errorMessage)) {
+                IE_THROW(NotImplemented) << errorMessage;
+            }
+
             errorPrefix = "DepthToSpace layer with name '" + op->get_friendly_name() + "'";
             const auto depthToSpace = std::dynamic_pointer_cast<const ngraph::opset1::DepthToSpace>(op);
 
