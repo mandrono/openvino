@@ -64,7 +64,7 @@ std::vector<std::string> disabledTestPatterns() {
         R"(.*ExtractImagePatchesTest.*)",
         R"(.*GRUCellTest.*)",
         R"(.*GRUSequenceTest.*)",
-        R"(.*LogSoftmaxLayerTest.*)",
+        // R"(.*LogSoftmaxLayerTest.*)",
         R"(.*StaticShapeLoopTest.*)",
         R"(.*TrivialLoopTest.*)",
         R"(.*LoopTest.*)",
