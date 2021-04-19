@@ -75,14 +75,14 @@ set(LAYERS
 #    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/powerfile.cpp
 #    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/priorbox.cpp
 #    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/priorbox_clustered.cpp
-#    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/priorgridgenerator_onnx.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/priorgridgenerator_onnx.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/nodes/proposal_onnx.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/nodes/psroi_pooling.cpp
 #    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/range.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/nodes/region_yolo.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/nodes/reorg_yolo.cpp
 #    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/reverse_sequence.cpp
-#    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/roifeatureextractor_onnx.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/roifeatureextractor_onnx.cpp
 #    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/select.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/nodes/shuffle_channels.cpp
 #    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/simplernms.cpp
@@ -94,7 +94,7 @@ set(LAYERS
 #    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/sparse_to_dense.cpp
 #    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/bucketize.cpp
 #    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/squeeze.cpp
-#    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/topkrois_onnx.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/topkrois_onnx.cpp
 #    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/unique.cpp
 #    ${CMAKE_CURRENT_SOURCE_DIR}/nodes/unsqueeze.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/nodes/common/softmax.cpp
