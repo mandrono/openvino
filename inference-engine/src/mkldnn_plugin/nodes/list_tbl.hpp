@@ -75,7 +75,7 @@ MKLDNN_EXTENSION_NODE(GatherImpl, Gather);
 MKLDNN_EXTENSION_NODE(GatherElementsImpl, GatherElements);
 MKLDNN_EXTENSION_NODE(GatherNDImpl, GatherND);
 MKLDNN_EXTENSION_NODE(ProposalImpl, Proposal);
-//MKLDNN_EXTENSION_NODE(RangeImpl, Range);
+MKLDNN_EXTENSION_NODE(RangeImpl, Range);
 MKLDNN_EXTENSION_NODE(SelectImpl, Select);
 MKLDNN_EXTENSION_NODE(GatherTreeImpl, GatherTree);
 //MKLDNN_EXTENSION_NODE(PriorBoxClusteredImpl, PriorBoxClustered);
