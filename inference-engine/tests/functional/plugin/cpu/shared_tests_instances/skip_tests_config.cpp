@@ -61,7 +61,7 @@ std::vector<std::string> disabledTestPatterns() {
         // shared SLT test
         R"(.*BatchToSpaceLayerTest.*)",
         R"(.*BucketizeLayerTest.*)",
-        R"(.*ExtractImagePatchesTest.*)",
+        // R"(.*ExtractImagePatchesTest.*)",
         R"(.*GRUCellTest.*)",
         R"(.*GRUSequenceTest.*)",
         // R"(.*LogSoftmaxLayerTest.*)",

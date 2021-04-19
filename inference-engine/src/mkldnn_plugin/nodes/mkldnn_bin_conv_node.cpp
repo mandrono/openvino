@@ -953,10 +953,6 @@ void MKLDNNBinaryConvolutionNode::getSupportedDescriptors() {
     if (getChildEdgeAt(0)->getDims().ndims() != 4) {
         IE_THROW() << errorPrefix << "doesn't support output with rank: " << getChildEdgeAt(0)->getDims().ndims();
     }
-
-    if ((getParentEdgeAt(0)->getDims().ndims() < 4) || (getParentEdgeAt(0)->getDims().ndims() > 5)) {
-        IE_THROW() << "Convolution layer. Unsupported mode. Only 4D and 5D blobs are supported as input.";
-    }
 }
 
 void MKLDNNBinaryConvolutionNode::initSupportedPrimitiveDescriptors() {
