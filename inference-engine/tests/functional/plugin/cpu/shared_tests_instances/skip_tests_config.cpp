@@ -54,7 +54,7 @@ std::vector<std::string> disabledTestPatterns() {
         // TODO: Incorrect blob sizes for node BinaryConvolution_X
         R"(.*BinaryConvolutionLayerTest.*)",
         R"(.*ClampLayerTest.*netPrc=(I64|I32).*)",
-        R"(.*ClampLayerTest.*netPrc=U64.*)"
+        R"(.*ClampLayerTest.*netPrc=U64.*)",
 
 
         /* ********************************************************** TEMPORARILY DISABLED TESTS ********************************************************** */
