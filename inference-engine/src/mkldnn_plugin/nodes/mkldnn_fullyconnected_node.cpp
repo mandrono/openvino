@@ -153,7 +153,11 @@ void MKLDNNFullyConnectedNode::execute(mkldnn::stream strm) {
 }
 
 bool MKLDNNFullyConnectedNode::canFuse(const MKLDNNNodePtr& node) const {
-    return canFuseSimpleOperation(node);
+    if (node->getType() == FakeQuantize) {
+        return node->getAlgorithm() != FQBinarization;
+    } else {
+        return canFuseSimpleOperation(node);
+    }
 }
 
 void MKLDNNFullyConnectedNode::setPostOps(mkldnn::primitive_attr &attr, bool initWeights = false) {

@@ -1084,6 +1084,26 @@ void MKLDNNBinaryConvolutionNode::createPrimitive() {
         bin_conv_kernel->create_ker();
 }
 
+bool MKLDNNBinaryConvolutionNode::canFuseSum(const MKLDNNNodePtr& node) const {
+    if (implType == impl_desc_type::ref)
+        return false;
+
+    // Binarization have to be last operation in fusing chain
+    if (isFusedWith(FakeQuantize))
+        return false;
+
+    if (node->getAlgorithm() == EltwiseAdd) {
+        for (auto& fusedNode : fusedWith) {
+            const auto eltwise = std::dynamic_pointer_cast<MKLDNNEltwiseNode>(fusedNode);
+            if (eltwise && eltwise->isSpecialConvolutionAddFusing()) {
+                return false;
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
 bool MKLDNNBinaryConvolutionNode::canFuse(const MKLDNNNodePtr& node) const {
     if (implType == impl_desc_type::ref)
         return false;
@@ -1093,23 +1113,10 @@ bool MKLDNNBinaryConvolutionNode::canFuse(const MKLDNNNodePtr& node) const {
         return false;
 
     if (node->getType() == FakeQuantize) {
-        return node->getAlgorithm() != FQBinarization;
-    } else if (node->getType() == Eltwise) {
-        // Only one Add operation can be fused since it is implemented via output blob reuse
-        if (node->getAlgorithm() == EltwiseAdd) {
-            for (auto& fusedNode : fusedWith) {
-                if (fusedNode->getType() == Eltwise && fusedNode->getAlgorithm() == EltwiseAdd) {
-                    return false;
-                }
-            }
-        }
-
-        return one_of(node->getAlgorithm(), EltwiseAdd, EltwiseMulAdd, EltwisePrelu, EltwiseRelu, EltwiseGelu, EltwiseElu, EltwiseSigmoid, EltwiseBoundedRelu,
-                                            EltwiseClamp, EltwiseTanh, EltwiseSwish, EltwiseHswish, EltwiseMish, EltwiseHsigmoid, EltwiseRoundHalfToEven,
-                                            EltwiseRoundHalfAwayFromZero, EltwiseLinear, EltwiseAbs, EltwiseSquare, EltwiseSqrt);
+        return node->getAlgorithm() == FQBinarization;
+    } else {
+        return canFuseSimpleOperation(node);
     }
-
-    return false;
 }
 
 void MKLDNNBinaryConvolutionNode::setPostOps(mkldnn::primitive_attr &attr) {
@@ -1118,7 +1125,7 @@ void MKLDNNBinaryConvolutionNode::setPostOps(mkldnn::primitive_attr &attr) {
     for (auto &node : fusedWith) {
         auto* eltwiseNode = dynamic_cast<MKLDNNEltwiseNode *>(node.get());
         if (eltwiseNode) {
-            if (eltwiseNode->getAlgorithm() == EltwiseAdd)
+            if (eltwiseNode->isSpecialConvolutionAddFusing())
                 ops.append_sum(1.0);
             else
                 eltwiseNode->appendPostOps(ops);

@@ -724,6 +724,14 @@ MKLDNNMemoryDesc MKLDNNConvolutionNode::getSrcMemDesc(mkldnn::primitive_desc_ite
     }
 }
 
+bool MKLDNNConvolutionNode::canFuse(const MKLDNNNodePtr& node) const {
+    if (node->getType() == FakeQuantize) {
+        return node->getAlgorithm() != FQBinarization;
+    } else {
+        return canFuseSimpleOperation(node);
+    }
+}
+
 InferenceEngine::Precision MKLDNNConvolutionNode::getRuntimePrecision() const {
     std::vector<InferenceEngine::Precision> inputPrecisions;
     // Don't take bias precision into account
