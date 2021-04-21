@@ -73,7 +73,7 @@ public:
             if (!(details::convertPrecision(op->get_input_element_type(RANGE_START)) == Precision::I32 &&
                   details::convertPrecision(op->get_input_element_type(RANGE_LIMIT)) == Precision::I32 &&
                   details::convertPrecision(op->get_input_element_type(RANGE_DELTA)) == Precision::I32 &&
-                 details::convertPrecision(op->get_output_element_type(0)) == Precision::I32) &&
+                  details::convertPrecision(op->get_output_element_type(0)) == Precision::I32) &&
                 !(details::convertPrecision(op->get_input_element_type(RANGE_START)) == Precision::FP32 &&
                   details::convertPrecision(op->get_input_element_type(RANGE_LIMIT)) == Precision::FP32 &&
                   details::convertPrecision(op->get_input_element_type(RANGE_DELTA)) == Precision::FP32 &&

@@ -339,7 +339,7 @@ public:
         try {
             std::string errorMessage;
             if (!isSupportedOperation(op, errorMessage)) {
-              IE_THROW(NotImplemented) << errorMessage;
+                IE_THROW(NotImplemented) << errorMessage;
             }
 
             const auto roiFeatureExtractor = std::dynamic_pointer_cast<const ngraph::opset6::ExperimentalDetectronROIFeatureExtractor>(op);

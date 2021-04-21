@@ -49,7 +49,7 @@ public:
         try {
             std::string errorMessage;
             if (!isSupportedOperation(op, errorMessage)) {
-              IE_THROW(NotImplemented) << errorMessage;
+                IE_THROW(NotImplemented) << errorMessage;
             }
 
             errorPrefix = "ExperimentalDetectronPriorGridGenerator layer with name '" + op->get_friendly_name() + "'";

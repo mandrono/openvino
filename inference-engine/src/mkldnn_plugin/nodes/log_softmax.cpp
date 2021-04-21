@@ -22,8 +22,8 @@ namespace Cpu {
 class LogSoftmaxImpl: public ExtLayerBase {
     bool isSupportedOperation(const std::shared_ptr<ngraph::Node>& op, std::string& errorMessage) noexcept {
         try {
-            const auto logSofrMax = std::dynamic_pointer_cast<const ngraph::opset5::LogSoftmax>(op);
-            if (!logSofrMax) {
+            const auto logSoftMax = std::dynamic_pointer_cast<const ngraph::opset5::LogSoftmax>(op);
+            if (!logSoftMax) {
                 errorMessage = "Only opset5 LogSoftmax operation is supported";
                 return false;
             }
@@ -42,7 +42,7 @@ public:
             }
 
             errorPrefix = "LogSoftmax layer with name '" + op->get_friendly_name() + "'";
-            const auto logSofrMax = std::dynamic_pointer_cast<const ngraph::opset5::LogSoftmax>(op);
+            const auto logSoftMax = std::dynamic_pointer_cast<const ngraph::opset5::LogSoftmax>(op);
 
             if (op->get_input_size() != 1 || op->get_output_size() != 1)
                 IE_THROW() << errorPrefix << " has incorrect number of input/output edges!";
@@ -50,7 +50,7 @@ public:
             SizeVector dims = op->get_input_shape(0);
             if (!dims.size())
                 dims = SizeVector(1, 1);
-            int axis = logSofrMax->get_axis();
+            int axis = logSoftMax->get_axis();
             if (axis < 0)
                 axis += dims.size();
 
