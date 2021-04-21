@@ -3225,7 +3225,11 @@ bool MKLDNNInterpolateNode::canFuse(const MKLDNNNodePtr& node) const {
         return false;
     }
 
-    return canFuseSimpleOperation(node);
+    if (node->getType() == FakeQuantize) {
+        return node->getAlgorithm() != FQBinarization;
+    } else {
+        return canFuseSimpleOperation(node);
+    }
 }
 
 bool MKLDNNInterpolateNode::created() const {

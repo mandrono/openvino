@@ -96,9 +96,6 @@ void MKLDNNGraphOptimizer::ApplyCommonGraphOptimizations(MKLDNNGraph &graph) {
     FuseConvolutionAndDWConvolution(graph);
     graph.RemoveDroppedNodes();
 
-    FuseBinaryConvolutionAndFakeQuantize(graph);
-    graph.RemoveDroppedNodes();
-
     FuseConvolutionSumAndConvolutionSumActivation(graph);
     graph.RemoveDroppedNodes();
 
@@ -682,7 +679,7 @@ void MKLDNNGraphOptimizer::FuseFullyConnectedAndSimpleOperation(MKLDNNGraph &gra
         }
 
         auto childNode = parentNode->getChildEdgeAt(0)->getChild();
-        if (!parentNode->canFuseSimpleOperation(childNode)) {
+        if (!parentNode->canFuse(childNode)) {
             parent++;
             continue;
         }
@@ -945,7 +942,7 @@ void MKLDNNGraphOptimizer::FuseConvolutionAndSimpleOperation(MKLDNNGraph &graph)
     auto& graphNodes = graph.GetNodes();
 
     auto isSutableParentNode = [](MKLDNNNodePtr node) {
-        return node->getType() == Convolution && node->getChildEdges().size() == 1;
+        return (node->getType() == Convolution || node->getType() == BinaryConvolution) && node->getChildEdges().size() == 1;
     };
 
     auto parent = graphNodes.begin();
@@ -955,9 +952,10 @@ void MKLDNNGraphOptimizer::FuseConvolutionAndSimpleOperation(MKLDNNGraph &graph)
             parent++;
             continue;
         }
+        const auto parentNodeType = parentNode->getType();
 
         auto childNode = parentNode->getChildEdgeAt(0)->getChild();
-        if (!parentNode->canFuseSimpleOperation(childNode)) {
+        if (!parentNode->canFuse(childNode)) {
             parent++;
             continue;
         }
@@ -968,7 +966,7 @@ void MKLDNNGraphOptimizer::FuseConvolutionAndSimpleOperation(MKLDNNGraph &graph)
             auto parentEdges = childNode->parentEdges;
             for (auto &parentEdge : parentEdges) {
                 auto p_edge = parentEdge.lock();
-                if (p_edge->getParent()->getType() == Convolution)
+                if (p_edge->getParent()->getType() == parentNodeType)
                     continue;
 
                 removeEdge(graph, p_edge);
@@ -976,47 +974,6 @@ void MKLDNNGraphOptimizer::FuseConvolutionAndSimpleOperation(MKLDNNGraph &graph)
         }
 
         graph.DropNode(childNode);
-    }
-}
-
-void MKLDNNGraphOptimizer::FuseBinaryConvolutionAndFakeQuantize(MKLDNNGraph &graph) {
-    auto& graphNodes = graph.GetNodes();
-
-    auto isSutableParentNode = [](MKLDNNNodePtr node) {
-        return node->getType() == BinaryConvolution && node->getChildEdges().size() == 1;
-    };
-
-    auto isSutableChildNode = [](MKLDNNNodePtr parentNode, MKLDNNNodePtr childNode) {
-        if ((parentNode->isConstant() && !childNode->isConstant()) || childNode->getType() != FakeQuantize)
-            return false;
-
-        auto* binConv = dynamic_cast<MKLDNNBinaryConvolutionNode *>(parentNode.get());
-        if (!binConv) {
-            return false;
-        }
-
-        return binConv->canFuse(childNode);
-    };
-
-    for (int i = 0; i < graphNodes.size(); i++) {
-        auto parent = graphNodes[i];
-        if (!isSutableParentNode(parent)) continue;
-
-        auto child = parent->getChildEdgeAt(0)->getChild();
-        if (!isSutableChildNode(parent, child)) continue;
-
-        child->fuseInto(parent);
-
-        auto parents = child->parentEdges;
-        for (size_t i = 0; i < parents.size(); i++) {
-            auto p_edge = parents[i].lock();
-            if (p_edge->getParent()->getType() == BinaryConvolution)
-                continue;
-
-            removeEdge(graph, p_edge);
-        }
-
-        graph.DropNode(child);
     }
 }
 
@@ -1153,12 +1110,12 @@ void MKLDNNGraphOptimizer::FuseConvolutionSumAndConvolutionSumActivation(MKLDNNG
 
         auto* binConvNode1 = dynamic_cast<MKLDNNBinaryConvolutionNode *>(parent1.get());
         if (binConvNode1) {
-            isSutableParent1 = isSutableParent1 && binConvNode1->canFuse(graphNode);
+            isSutableParent1 = isSutableParent1 && binConvNode1->canFuseSum(graphNode);
         }
 
         auto* binConvNode2 = dynamic_cast<MKLDNNBinaryConvolutionNode *>(parent2.get());
         if (binConvNode2) {
-            isSutableParent2 = isSutableParent2 && binConvNode2->canFuse(graphNode);
+            isSutableParent2 = isSutableParent2 && binConvNode2->canFuseSum(graphNode);
         }
 
         auto* convNode1 = dynamic_cast<MKLDNNConvolutionNode *>(parent1.get());

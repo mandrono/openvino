@@ -1769,7 +1769,7 @@ void MKLDNNEltwiseNode::fillScalesAndShifts(const MKLDNNNode *parentNode) {
 
 void MKLDNNEltwiseNode::fuseInto(MKLDNNNodePtr& parentNode) {
     // Handling Convolution custom Add node fusing case which is processed via dnnl append_sum() API.
-    specialConvolutionAddFusing = parentNode->getType() == Convolution && getAlgorithm() == EltwiseAdd &&
+    specialConvolutionAddFusing = (parentNode->getType() == Convolution || parentNode->getType() == BinaryConvolution) && getAlgorithm() == EltwiseAdd &&
             getParentEdgesAtPort(0)[0]->getDims().ToSizeVector() == getParentEdgesAtPort(1)[0]->getDims().ToSizeVector();
     if (!specialConvolutionAddFusing && canBePerformedAsScaleShift(parentNode.get())) {
         fillScalesAndShifts(parentNode.get());
