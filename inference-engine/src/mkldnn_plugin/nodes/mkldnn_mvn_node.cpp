@@ -677,7 +677,7 @@ MKLDNNMVNNode::MKLDNNMVNNode(const std::shared_ptr<ngraph::Node>& op, const mkld
         epsValue_ = mvnOp->get_eps();
         epsMode_ = INSIDE_SQRT;
         if (mvnOp->get_eps_mode() == ngraph::op::MVNEpsMode::OUTSIDE_SQRT) {
-            epsMode_ = INSIDE_SQRT;
+            epsMode_ = OUTSIDE_SQRT;
         }
 
         acrossChannels_ = false;

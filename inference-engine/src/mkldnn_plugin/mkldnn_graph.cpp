@@ -197,6 +197,8 @@ void MKLDNNGraph::Replicate(const CNNNetwork &network, const MKLDNNExtensionMana
     InputsDataMap inputsInfo = network.getInputsInfo();
     OutputsDataMap outputsInfo = network.getOutputsInfo();
 
+    this->_name = network.getName();
+
     std::shared_ptr<const ngraph::Function> func = network.getFunction();
     if (!func) {
         IE_THROW() << "Function pointer inside CNNNetwork is nullptr";
@@ -307,25 +309,19 @@ void MKLDNNGraph::Replicate(const CNNNetwork &network, const MKLDNNExtensionMana
         }
     }
 
-//
-//    // Replicate input nodes
-//    for (const auto& input : inputs) {
-//        auto inputLayer = getCreatorLayer(input.second->getInputData()).lock();
-//        inputNodesMap[input.first] = layer2node[inputLayer];
-//
-//        // Loading mean images
-//        MKLDNNDims outDims;
-//        if (!inputNodesMap[input.first]->getChildEdgeAt(0)->getDims().ndims())
-//            outDims = MKLDNNDims(InferenceEngine::SizeVector(1, 1));
-//        else
-//            outDims = MKLDNNDims(inputNodesMap[input.first]->getChildEdgeAt(0)->getDims());
-//        if (inputs.find(input.first) != inputs.end()) {
-//            InputInfo::Ptr ii = inputs[input.first];
-//            if (ii && ii->getPreProcess().getNumberOfChannels()) {
-//                _meanImages[input.first].Load(outDims, ii);
-//            }
-//        }
-//    }
+    // Loading mean images
+    for (const auto& input : inputsInfo) {
+        MKLDNNDims outDims;
+        if (!inputNodesMap[input.first]->getChildEdgeAt(0)->getDims().ndims()) {
+            outDims = MKLDNNDims(InferenceEngine::SizeVector(1, 1));
+        } else {
+            outDims = inputNodesMap[input.first]->getChildEdgeAt(0)->getDims();
+        }
+        InputInfo::Ptr ii = inputsInfo[input.first];
+        if (ii && ii->getPreProcess().getNumberOfChannels()) {
+            _meanImages[input.first].Load(outDims, ii);
+        }
+    }
 }
 
 void MKLDNNGraph::InitGraph() {
@@ -499,23 +495,25 @@ void MKLDNNGraph::InitEdges() {
 
             // Check if there is a reorder that supports the type conversion
             if (edge->getInputDesc().getPrecision() != edge->getOutputDesc().getPrecision() &&
-                !isReorderAvailable(edge->getInputDesc(), edge->getOutputDesc(), this->getEngine())) {
-                IE_THROW() << "[NM] Not implemented";
-//                //If we are here, then we need to insert Convert, because there are no reorders that support such type conversion
-//                std::string convertName = edge->getParent()->getName() + "_" +
-//                                          edge->getInputDesc().getPrecision().name() + "_" + edge->getOutputDesc().getPrecision().name();
-//
-//                CNNLayerPtr convert(new CNNLayer(LayerParams{convertName, "Convert", edge->getInputDesc().getPrecision()}));
-//                auto convertNode = std::make_shared<MKLDNNConvertNode>(convert, this->getEngine(), this->weightsCache);
-//                convertNode->setDescs(edge->getInputDesc(), edge->getOutputDesc());
-//                InsertNode(edge, convertNode, true);
-//
-//                //Check if reorder is still needed
-//                if (convertNode->getChildEdgeAt(0)->needReorder()) {
-//                    edge = convertNode->getChildEdgeAt(0);
-//                } else {
-//                    insertReorder = false;
-//                }
+                    !isReorderAvailable(edge->getInputDesc(), edge->getOutputDesc(), this->getEngine())) {
+                //If we are here, then we need to insert Convert, because there are no reorders that support such type conversion
+                const auto inDesc = edge->getInputDesc();
+                const auto outDesc = edge->getOutputDesc();
+
+                std::string convertName = edge->getParent()->getName() + "_" +
+                                          inDesc.getPrecision().name() + "_" + outDesc.getPrecision().name();
+
+                auto convertNode = std::make_shared<MKLDNNConvertNode>(inDesc.getDims(), inDesc.getPrecision(), outDesc.getPrecision(), convertName,
+                                                                       this->getEngine(), this->weightsCache);
+                convertNode->setDescs(inDesc, outDesc);
+                InsertNode(edge, convertNode, true);
+
+                //Check if reorder is still needed
+                if (convertNode->getChildEdgeAt(0)->needReorder()) {
+                    edge = convertNode->getChildEdgeAt(0);
+                } else {
+                    insertReorder = false;
+                }
             }
 
             if (insertReorder) {
@@ -809,7 +807,27 @@ void MKLDNNGraph::PullOutputData(BlobMap &out) {
             MB_to_process = std::min<int>(config.batchLimit, MB_to_process);
         size_t size_to_copy = intr_blob.GetElementsCount() * MB_to_process / MB;
 
-        cpu_convert(intr_blob_ptr, ext_blob_ptr, srcPrec, dstPrec, size_to_copy);
+        const auto actualDesc = node->getParentEdgeAt(0)->getDesc();
+        const auto expectedDesc = ext_blob->getTensorDesc();
+
+        bool isScalarOutput = false;
+        if (actualDesc.getLayout() == SCALAR) {
+            isScalarOutput = expectedDesc.getLayout() == SCALAR ||
+                             std::accumulate(expectedDesc.getDims().begin(), expectedDesc.getDims().end(), (size_t)1, std::multiplies<size_t>()) == 1;
+        } else if (expectedDesc.getLayout() == SCALAR) {
+            isScalarOutput = actualDesc.getLayout() == SCALAR ||
+                             std::accumulate(actualDesc.getDims().begin(), actualDesc.getDims().end(), (size_t)1, std::multiplies<size_t>()) == 1;
+        }
+
+        if (actualDesc.getBlockingDesc() != expectedDesc.getBlockingDesc() && !isScalarOutput) {
+            auto outBlobDesc = MKLDNNMemoryDesc{expectedDesc};
+            auto outBloMem = MKLDNNMemory(eng);
+            outBloMem.Create(outBlobDesc, ext_blob_ptr, false);
+
+            outBloMem.SetData(intr_blob, 0, false);
+        } else {
+            cpu_convert(intr_blob_ptr, ext_blob_ptr, srcPrec, dstPrec, size_to_copy);
+        }
     }
 }
 

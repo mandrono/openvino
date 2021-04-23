@@ -101,7 +101,7 @@ static const InferenceEngine::details::caseless_unordered_map<std::string, Type>
         { "Sqrt", Eltwise },
         { "Clamp", Eltwise },
         { "Exp", Eltwise },
-        { "Swish", Eltwise },
+        { "SwishCPU", Eltwise },
         { "HSwish", Eltwise },
         { "Mish", Eltwise },
         { "HSigmoid", Eltwise },
