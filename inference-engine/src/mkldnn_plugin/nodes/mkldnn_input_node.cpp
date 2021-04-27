@@ -56,6 +56,15 @@ MKLDNNInputNode::MKLDNNInputNode(const std::shared_ptr<ngraph::Node>& op, const 
     }
 }
 
+MKLDNNInputNode::MKLDNNInputNode(const InferenceEngine::SizeVector &dims, const InferenceEngine::Precision &prc, const std::string &name,
+                                 const std::string &type, const mkldnn::engine& eng, MKLDNNWeightsSharing::Ptr &cache)
+        : MKLDNNNode(type, name, eng, cache) {
+    constant = ConstantType::NoConst;
+    constBlob = nullptr;
+    inDims.emplace_back(dims);
+    addOriginalInputPrecision(prc);
+}
+
 void MKLDNNInputNode::getSupportedDescriptors() {
     if (getType() == Input) {
         if (!getParentEdges().empty())

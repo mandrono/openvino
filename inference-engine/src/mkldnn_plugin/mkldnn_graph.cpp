@@ -279,10 +279,12 @@ void MKLDNNGraph::Replicate(const CNNNetwork &network, const MKLDNNExtensionMana
     // Add stub output node for unused outputs
     for (auto unusedOutput : unusedOutputs) {
         auto parentNode = op2node[unusedOutput.get_node_shared_ptr()];
-        auto newResult = std::make_shared<ngraph::op::v0::Result>(unusedOutput);
-        newResult->set_friendly_name(std::string("stub_") + std::to_string(unusedOutput.get_index()) + "_" + parentNode->getName());
-        const MKLDNNNodePtr outNode(MKLDNNNode::factory().create(newResult, getEngine(), extMgr, weightsCache));
-        MKLDNNEdgePtr edge(new MKLDNNEdge(parentNode, outNode, unusedOutput.get_index(), 0));
+        const auto port = unusedOutput.get_index();
+        const auto nodeName = std::string("stub_") + std::to_string(unusedOutput.get_index()) + "_" + parentNode->getName();
+        const MKLDNNNodePtr outNode = std::make_shared<MKLDNNInputNode>(parentNode->outDims[port].ToSizeVector(),
+                                                                        parentNode->getOriginalOutputPrecisionAtPort(port),
+                                                                        nodeName, "Result", getEngine(), weightsCache);
+        MKLDNNEdgePtr edge(new MKLDNNEdge(parentNode, outNode, port, 0));
         outNode->addEdge(edge);
         graphEdges.push_back(edge);
         graphNodes.push_back(outNode);
