@@ -1084,26 +1084,6 @@ void MKLDNNBinaryConvolutionNode::createPrimitive() {
         bin_conv_kernel->create_ker();
 }
 
-bool MKLDNNBinaryConvolutionNode::canFuseSum(const MKLDNNNodePtr& node) const {
-    if (implType == impl_desc_type::ref)
-        return false;
-
-    // Binarization have to be last operation in fusing chain
-    if (isFusedWith(FakeQuantize))
-        return false;
-
-    if (node->getAlgorithm() == EltwiseAdd) {
-        for (auto& fusedNode : fusedWith) {
-            const auto eltwise = std::dynamic_pointer_cast<MKLDNNEltwiseNode>(fusedNode);
-            if (eltwise && eltwise->isSpecialConvolutionAddFusing()) {
-                return false;
-            }
-        }
-        return true;
-    }
-    return false;
-}
-
 bool MKLDNNBinaryConvolutionNode::canFuse(const MKLDNNNodePtr& node) const {
     if (implType == impl_desc_type::ref)
         return false;

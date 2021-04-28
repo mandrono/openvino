@@ -787,14 +787,7 @@ void MKLDNNNormalizeL2Node::initSupportedPrimitiveDescriptors() {
 }
 
 bool MKLDNNNormalizeL2Node::canFuse(const MKLDNNNodePtr& node) const {
-    if (!cornerCase) {
-        if (node->getType() == FakeQuantize) {
-            return node->getAlgorithm() != FQBinarization;
-        } else {
-            return canFuseSimpleOperation(node);
-        }
-    }
-    return false;
+    return !cornerCase && canFuseSimpleOperation(node);
 }
 
 void MKLDNNNormalizeL2Node::setPostOps(mkldnn::primitive_attr &attr, bool initWeights) {

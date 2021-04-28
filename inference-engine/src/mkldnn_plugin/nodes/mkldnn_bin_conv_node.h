@@ -87,9 +87,10 @@ public:
     }
     void setPostOps(mkldnn::primitive_attr &attr);
     bool canFuse(const MKLDNNNodePtr& node) const override;
-    bool canFuseSum(const MKLDNNNodePtr& node) const;
 
     static bool isSupportedOperation(const std::shared_ptr<ngraph::Node>& op, std::string& errorMessage) noexcept;
+
+    impl_desc_type getImplType() { return implType; }
 
 private:
     bool withSum = false;

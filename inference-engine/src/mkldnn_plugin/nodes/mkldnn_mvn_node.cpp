@@ -1392,11 +1392,7 @@ bool MKLDNNMVNNode::canFuse(const MKLDNNNodePtr& node) const {
         return false;
     }
 
-    if (node->getType() == FakeQuantize) {
-        return node->getAlgorithm() != FQBinarization;
-    } else {
-        return canFuseSimpleOperation(node);
-    }
+    return canFuseSimpleOperation(node);
 }
 
 bool MKLDNNMVNNode::created() const {

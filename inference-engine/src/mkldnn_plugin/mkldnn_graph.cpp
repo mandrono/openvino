@@ -812,6 +812,8 @@ void MKLDNNGraph::PullOutputData(BlobMap &out) {
         const auto actualDesc = node->getParentEdgeAt(0)->getDesc();
         const auto expectedDesc = ext_blob->getTensorDesc();
 
+        // TODO [NM]: need to create universal reorder which will be detect cases when we really need to use it
+        // WA: for cases when output shape after transformation will be 1x1x1x1 but model output is scalar
         bool isScalarOutput = false;
         if (actualDesc.getLayout() == SCALAR) {
             isScalarOutput = expectedDesc.getLayout() == SCALAR ||
