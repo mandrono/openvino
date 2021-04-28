@@ -34,7 +34,7 @@ public:
 private:
     InferenceEngine::Precision precision;
 
-    InferenceEngine::Blob::Ptr constBlob;
+    InferenceEngine::Blob::Ptr constBlob = nullptr;
     bool isMeanImage = false;
 };
 
