@@ -56,7 +56,13 @@ std::vector<std::string> disabledTestPatterns() {
         R"(.*ClampLayerTest.*netPrc=(I64|I32).*)",
         R"(.*ClampLayerTest.*netPrc=U64.*)",
         R"(.*CoreThreadingTestsWithIterations\.smoke_LoadNetwork.t.*)",
+
+        // incorrect reference implementation
         R"(.*NormalizeL2LayerTest.*axes=\(\).*)",
+        // lpt transformation produce the same names for MatMul and Multiply
+        R"(.*MatMulTransformation.*)",
+        // incorrect jit_uni_planar_convolution with dilation = {1, 2, 1} and output channel 1
+        R"(.*smoke_Convolution3D.*D=\(1.2.1\)_O=1.*)",
 
         /* ********************************************************** TEMPORARILY DISABLED TESTS ********************************************************** */
         // shared SLT test
@@ -73,16 +79,6 @@ std::vector<std::string> disabledTestPatterns() {
 
         // shared subgraph test
         R"(.*MultipleLSTMCellTest.*)",
-
-        // serialize
-        R"(.*ExecGraphTests.*)",
-        R"(.*ExecGraphRuntimePrecision.*)",
-        // smoke_LPT/MatMulTransformation
-
-        // accuracy difference
-        // Looks like problem with jit_uni_planar_convolution with dilation = {1, 2, 1} and output channel 1
-        // reference implementation works good
-        R"(.*smoke_Convolution3D.*)",
     };
 
 // TODO [NM]: Disabled until BF16 transformer is not migrated on CPU graph representation.
