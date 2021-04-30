@@ -8,6 +8,9 @@
 #include "nodes/common/cpu_convert.h"
 #include "utils/bfloat16.hpp"
 #include <mkldnn_extension_utils.h>
+#include "ngraph_transformations/op/rnn_sequence.hpp"
+#include "ngraph_transformations/op/gru_sequence.hpp"
+#include "ngraph_transformations/op/lstm_sequence.hpp"
 
 #include <ngraph/node.hpp>
 
@@ -21,14 +24,12 @@ namespace MKLDNNPlugin {
 
 static rnn_direction ieDirection2dnnl(const std::shared_ptr<const ngraph::Node>& op) {
     ngraph::op::RecurrentSequenceDirection direction = ngraph::op::RecurrentSequenceDirection::FORWARD;
-    if (op->get_type_info() == ngraph::op::v5::GRUSequence::type_info) {
-        direction = ngraph::as_type_ptr<const ngraph::op::v5::GRUSequence>(op)->get_direction();
-    } else if (op->get_type_info() == ngraph::op::v0::LSTMSequence::type_info) {
-        direction = ngraph::as_type_ptr<const ngraph::op::v0::LSTMSequence>(op)->get_direction();
-    } else if (op->get_type_info() == ngraph::op::v5::LSTMSequence::type_info) {
-        direction = ngraph::as_type_ptr<const ngraph::op::v5::LSTMSequence>(op)->get_direction();
-    } else if (op->get_type_info() == ngraph::op::v5::RNNSequence::type_info) {
-        direction = ngraph::as_type_ptr<const ngraph::op::v5::RNNSequence>(op)->get_direction();
+    if (op->get_type_info() == MKLDNNPlugin::GRUSequenceNode::type_info) {
+        direction = ngraph::as_type_ptr<const MKLDNNPlugin::GRUSequenceNode>(op)->get_direction();
+    } else if (op->get_type_info() == MKLDNNPlugin::LSTMSequenceNode::type_info) {
+        direction = ngraph::as_type_ptr<const MKLDNNPlugin::LSTMSequenceNode>(op)->get_direction();
+    } else if (op->get_type_info() == MKLDNNPlugin::RNNSequenceNode::type_info) {
+        direction = ngraph::as_type_ptr<const MKLDNNPlugin::RNNSequenceNode>(op)->get_direction();
     }
     return direction == ngraph::op::RecurrentSequenceDirection::FORWARD ? rnn_direction::unidirectional_left2right
          : direction == ngraph::op::RecurrentSequenceDirection::REVERSE ? rnn_direction::unidirectional_right2left
@@ -46,23 +47,22 @@ static mkldnn::algorithm ie2dnnl(std::string act_type) {
 static mkldnn::algorithm ie2dnnl(const std::shared_ptr<const ngraph::Node>& op) {
     if (one_of(op->get_type_info(),
             ngraph::op::v3::GRUCell::type_info,
-            ngraph::op::v5::GRUSequence::type_info)) {
+            MKLDNNPlugin::GRUSequenceNode::type_info)) {
         auto gruCellOp = ngraph::as_type_ptr<const ngraph::op::v3::GRUCell>(op);
-        auto gruSeqOp = ngraph::as_type_ptr<const ngraph::op::v5::GRUSequence>(op);
-        if (gruCellOp && gruCellOp->get_linear_before_reset() ||
-                gruSeqOp && gruSeqOp->get_linear_before_reset())
+        auto gruSeqOp = ngraph::as_type_ptr<const MKLDNNPlugin::GRUSequenceNode>(op);
+        if ((gruCellOp && gruCellOp->get_linear_before_reset()) ||
+                (gruSeqOp && gruSeqOp->get_linear_before_reset()))
             return mkldnn::algorithm::lbr_gru;
         else
             return mkldnn::algorithm::vanilla_gru;
     } else if (one_of(op->get_type_info(),
             ngraph::op::v0::LSTMCell::type_info,
             ngraph::op::v4::LSTMCell::type_info,
-            ngraph::op::v0::LSTMSequence::type_info,
-            ngraph::op::v5::LSTMSequence::type_info)) {
+            MKLDNNPlugin::LSTMSequenceNode::type_info)) {
         return mkldnn::algorithm::vanilla_lstm;
     } else if (one_of(op->get_type_info(),
             ngraph::op::v0::RNNCell::type_info,
-            ngraph::op::v5::RNNSequence::type_info)) {
+            MKLDNNPlugin::RNNSequenceNode::type_info)) {
         return mkldnn::algorithm::vanilla_rnn;
     } else {
         IE_THROW() << "Unsupported cell type";
@@ -113,10 +113,9 @@ bool MKLDNNRNN::isSupportedOperation(const std::shared_ptr<const ngraph::Node>& 
                 ngraph::op::v0::LSTMCell::type_info,
                 ngraph::op::v4::LSTMCell::type_info,
                 ngraph::op::v0::RNNCell::type_info,
-                ngraph::op::v5::GRUSequence::type_info,
-                ngraph::op::v0::LSTMSequence::type_info,
-                ngraph::op::v5::LSTMSequence::type_info,
-                ngraph::op::v5::RNNSequence::type_info)) {
+                MKLDNNPlugin::GRUSequenceNode::type_info,
+                MKLDNNPlugin::LSTMSequenceNode::type_info,
+                MKLDNNPlugin::RNNSequenceNode::type_info)) {
             errorMessage = "Unsupported RNN operation.";
             return false;
         }
@@ -126,8 +125,8 @@ bool MKLDNNRNN::isSupportedOperation(const std::shared_ptr<const ngraph::Node>& 
                 errorMessage = "Node expects 5 inputs. Actual: " + std::to_string(op->get_input_size());
                 return false;
             }
-            if (op->get_input_node_ptr(2)->get_type_info() != ngraph::op::v0::Constant::type_info &&
-                    op->get_input_node_ptr(3)->get_type_info() != ngraph::op::v0::Constant::type_info &&
+            if (op->get_input_node_ptr(2)->get_type_info() != ngraph::op::v0::Constant::type_info ||
+                    op->get_input_node_ptr(3)->get_type_info() != ngraph::op::v0::Constant::type_info ||
                     op->get_input_node_ptr(4)->get_type_info() != ngraph::op::v0::Constant::type_info) {
                 errorMessage = "Node expects constants as W, R, B inputs.";
                 return false;
@@ -135,27 +134,26 @@ bool MKLDNNRNN::isSupportedOperation(const std::shared_ptr<const ngraph::Node>& 
         } else if (one_of(op->get_type_info(),
                 ngraph::op::v0::LSTMCell::type_info,
                 ngraph::op::v4::LSTMCell::type_info,
-                ngraph::op::v5::GRUSequence::type_info,
-                ngraph::op::v5::RNNSequence::type_info)) {
+                MKLDNNPlugin::GRUSequenceNode::type_info,
+                MKLDNNPlugin::RNNSequenceNode::type_info)) {
             if (op->get_input_size() != 6) {
                 errorMessage = "Node expects 6 inputs. Actual: " + std::to_string(op->get_input_size());
                 return false;
             }
-            if (op->get_input_node_ptr(3)->get_type_info() != ngraph::op::v0::Constant::type_info &&
-                    op->get_input_node_ptr(4)->get_type_info() != ngraph::op::v0::Constant::type_info &&
+            if (op->get_input_node_ptr(3)->get_type_info() != ngraph::op::v0::Constant::type_info ||
+                    op->get_input_node_ptr(4)->get_type_info() != ngraph::op::v0::Constant::type_info ||
                     op->get_input_node_ptr(5)->get_type_info() != ngraph::op::v0::Constant::type_info) {
                 errorMessage = "Node expects constants as W, R, B inputs.";
                 return false;
             }
         } else if (one_of(op->get_type_info(),
-                ngraph::op::v0::LSTMSequence::type_info,
-                ngraph::op::v5::LSTMSequence::type_info)) {
+                MKLDNNPlugin::LSTMSequenceNode::type_info)) {
             if (op->get_input_size() != 7) {
                 errorMessage = "Node expects 7 inputs. Actual: " + std::to_string(op->get_input_size());
                 return false;
             }
-            if (op->get_input_node_ptr(4)->get_type_info() != ngraph::op::v0::Constant::type_info &&
-                    op->get_input_node_ptr(5)->get_type_info() != ngraph::op::v0::Constant::type_info &&
+            if (op->get_input_node_ptr(4)->get_type_info() != ngraph::op::v0::Constant::type_info ||
+                    op->get_input_node_ptr(5)->get_type_info() != ngraph::op::v0::Constant::type_info ||
                     op->get_input_node_ptr(6)->get_type_info() != ngraph::op::v0::Constant::type_info) {
                 errorMessage = "Node expects constants as W, R, B inputs.";
                 return false;
@@ -169,14 +167,12 @@ bool MKLDNNRNN::isSupportedOperation(const std::shared_ptr<const ngraph::Node>& 
         }
 
         ngraph::op::RecurrentSequenceDirection direction = ngraph::op::RecurrentSequenceDirection::FORWARD;
-        if (op->get_type_info() == ngraph::op::v5::GRUSequence::type_info) {
-            direction = ngraph::as_type_ptr<const ngraph::op::v5::GRUSequence>(op)->get_direction();
-        } else if (op->get_type_info() == ngraph::op::v0::LSTMSequence::type_info) {
-            direction = ngraph::as_type_ptr<const ngraph::op::v0::LSTMSequence>(op)->get_direction();
-        } else if (op->get_type_info() == ngraph::op::v5::LSTMSequence::type_info) {
-            direction = ngraph::as_type_ptr<const ngraph::op::v5::LSTMSequence>(op)->get_direction();
-        } else if (op->get_type_info() == ngraph::op::v5::RNNSequence::type_info) {
-            direction = ngraph::as_type_ptr<const ngraph::op::v5::RNNSequence>(op)->get_direction();
+        if (op->get_type_info() == MKLDNNPlugin::GRUSequenceNode::type_info) {
+            direction = ngraph::as_type_ptr<const MKLDNNPlugin::GRUSequenceNode>(op)->get_direction();
+        } else if (op->get_type_info() == MKLDNNPlugin::LSTMSequenceNode::type_info) {
+            direction = ngraph::as_type_ptr<const MKLDNNPlugin::LSTMSequenceNode>(op)->get_direction();
+        } else if (op->get_type_info() == MKLDNNPlugin::RNNSequenceNode::type_info) {
+            direction = ngraph::as_type_ptr<const MKLDNNPlugin::RNNSequenceNode>(op)->get_direction();
         }
         if (!one_of(direction, ngraph::op::RecurrentSequenceDirection::FORWARD, ngraph::op::RecurrentSequenceDirection::REVERSE)) {
             errorMessage = "Unsupported sequence direction.";
@@ -244,19 +240,19 @@ void MKLDNNRNN::initCell(const std::shared_ptr<ngraph::Node>& op) {
     Gb = (cell_type != mkldnn::algorithm::lbr_gru) ? G : G + 1;
 
     // Expected shapes
-    SizeVector D_shape {N, DC}, S_shape {N, SC}, S_4D_shape {L, D, N, SC};
+    MKLDNNDims D_shape {N, DC}, S_shape {N, SC}, S_4D_shape {L, D, N, SC};
 
-    if (in_data_dims != D_shape
-        || in_h_state_dims != S_shape
-        || out_h_state_dims != S_shape)
+    if (in_data_dims != D_shape.ToSizeVector()
+        || in_h_state_dims != S_shape.ToSizeVector()
+        || out_h_state_dims != S_shape.ToSizeVector())
         IE_THROW() << "Incorrect shape of input/output ports for layer " << getName();
 
     if (S == 2) {
         auto in_c_state_dims = op->get_input_shape(2);
         auto out_c_state_dims = op->get_output_shape(1);
 
-        if (in_c_state_dims != S_shape
-            || out_c_state_dims != S_shape)
+        if (in_c_state_dims != S_shape.ToSizeVector()
+            || out_c_state_dims != S_shape.ToSizeVector())
             IE_THROW() << "Incorrect shape of input/output ports for layer " << getName();
     }
 
@@ -495,14 +491,13 @@ void MKLDNNRNN::copyWeightsData(const std::shared_ptr<ngraph::Node>& op) {
             ngraph::op::v3::GRUCell::type_info)) {
         wIdx = 2; rIdx = 3; bIdx = 4;
     } else if (one_of(op->get_type_info(),
-            ngraph::op::v5::RNNSequence::type_info,
+            MKLDNNPlugin::RNNSequenceNode::type_info,
             ngraph::op::v0::LSTMCell::type_info,
             ngraph::op::v4::LSTMCell::type_info,
-            ngraph::op::v5::GRUSequence::type_info)) {
+            MKLDNNPlugin::GRUSequenceNode::type_info)) {
         wIdx = 3; rIdx = 4; bIdx = 5;
     } else if (one_of(op->get_type_info(),
-            ngraph::op::v0::LSTMSequence::type_info,
-            ngraph::op::v5::LSTMSequence::type_info)) {
+            MKLDNNPlugin::LSTMSequenceNode::type_info)) {
         wIdx = 4; rIdx = 5; bIdx = 6;
     }
 
