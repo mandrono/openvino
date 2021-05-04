@@ -74,6 +74,8 @@ protected:
              {num_directions, 4 * hidden_size}},
         };
 
+        // method MKLDNNMemoryDesc::isSame can't correct compute layout for tensor with strides = 1
+        // returned output format always tnc
         if (inFmts.size() >= 3) {
             for (size_t i = 1; i < 3; i++) {
                 if (ngraph::shape_size(inputShapes[i]) == 1) {
@@ -113,6 +115,8 @@ protected:
                                                        direction,
                                                        m_mode);
 
+        // method MKLDNNMemoryDesc::isSame can't correct compute layout for tensor with strides = 1
+        // returned output format always tnc
         if (outFmts.size() >= 3) {
             for (size_t i = 1; i < 3; i++) {
                 if (ngraph::shape_size(lstm_sequence->get_output_shape(i)) == 1) {
@@ -120,6 +124,7 @@ protected:
                 }
             }
         }
+        // if output format equals for all outputs, runtime info return only one formats
         if (std::adjacent_find(outFmts.begin(), outFmts.end(), std::not_equal_to<cpu_memory_format_t>()) == outFmts.end()) {
             outFmts.resize(1);
         }

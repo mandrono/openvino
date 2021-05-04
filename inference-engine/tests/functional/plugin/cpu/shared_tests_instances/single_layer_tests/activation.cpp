@@ -75,7 +75,8 @@ std::map<std::vector<size_t>, std::vector<std::vector<size_t>>> preluBasic = {
         {{1, 20, 128}, {{1}, {20}}},
         {{1, 20, 128, 128}, {{1}, {20}}},
         {{1, 20, 20, 128, 128}, {{1}, {20}}}
-        // unsupported dimensions
+        // according to spec second input for PRelu must be 1D and must be broadcastabe per channel
+        // at this moment these cases unsupported
         // {{20, 128}, {{20}, {20, 128}}},
         // {{1, 20, 128}, {{128}, {20, 128}}},
         // {{1, 20, 128, 128}, {{128}, {128, 128}, {20, 128, 128}}},
