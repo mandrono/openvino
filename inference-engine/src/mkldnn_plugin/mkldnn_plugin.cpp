@@ -78,6 +78,8 @@
 
 #include <ie_algorithm.hpp>
 
+#include <ngraph/pass/visualize_tree.hpp>
+
 #include "nodes/mkldnn_mvn_node.h"
 #include "nodes/mkldnn_fake_quantize_node.h"
 #include "ngraph_transformations/convert_to_cpu_specific_opset.hpp"
@@ -107,7 +109,7 @@ Engine::~Engine() {
 
 static void Transformation(CNNNetwork& clonedNetwork, const Config& conf) {
     auto nGraphFunc = clonedNetwork.getFunction();
-
+// ngraph::pass::VisualizeTree("/home/maximandronov/test_repo/openvino/models/DEBUG/original.png").run_on_function(nGraphFunc);
     ngraph::pass::Manager manager;
     manager.register_pass<ngraph::pass::InitNodeInfo>();
 
@@ -346,8 +348,9 @@ static void Transformation(CNNNetwork& clonedNetwork, const Config& conf) {
     });
 
     postLPTPassManager.run_passes(nGraphFunc);
-
+// ngraph::pass::VisualizeTree("/home/maximandronov/test_repo/openvino/models/DEBUG/new1.png").run_on_function(nGraphFunc);
     ConvertToCPUSpecificOpset(nGraphFunc);
+// ngraph::pass::VisualizeTree("/home/maximandronov/test_repo/openvino/models/DEBUG/new2.png").run_on_function(nGraphFunc);
 }
 
 InferenceEngine::ExecutableNetworkInternal::Ptr

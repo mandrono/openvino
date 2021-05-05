@@ -88,8 +88,16 @@ void MKLDNNPoolingNode::getSupportedDescriptors() {
     inputPrecision = getOriginalInputPrecisionAtPort(0);
     outputPrecision = getOriginalOutputPrecisionAtPort(0);
 
-    // MKLDNN supports only equal precisions for input and output
-    if (one_of(inputPrecision, Precision::FP32, Precision::BF16)) {
+    // Dirty WA to support stat based quantization approach
+    if (outputPrecision != Precision::I8 && inputPrecision != Precision::BF16) {
+        if (getAlgorithm() == PoolingMax) {
+            // MKLDNN supports only equal precisions for input and output
+            outputPrecision = inputPrecision;
+        } else if (getAlgorithm() == PoolingAvg) {
+            outputPrecision = Precision::FP32;
+        }
+    }
+    if (inputPrecision == Precision::BF16) {
         outputPrecision = inputPrecision;
     }
 
