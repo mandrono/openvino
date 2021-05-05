@@ -218,7 +218,6 @@ void LayerTestsCommon::LoadNetwork() {
     CoreConfiguration(this);
     ConfigureNetwork();
     executableNetwork = core->LoadNetwork(cnnNetwork, targetDevice, configuration);
-    // executableNetwork.GetExecGraphInfo().serialize("/home/maximandronov/test_repo/openvino/models/DEBUG/new.xml");
 }
 
 void LayerTestsCommon::GenerateInputs() {
