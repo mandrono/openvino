@@ -9,6 +9,7 @@
 #include "ie_common.h"
 #include "utils/blob_dump.h"
 #include "utils/debug_capabilities.h"
+#include "cpu_memory_desc_utils.h"
 
 #include <array>
 #include <regex>
@@ -69,12 +70,11 @@ void NodeDumper::dumpInputBlobs(const MKLDNNNodePtr& node) const {
         if (desc.getPrecision() == Precision::BIN)
             continue;
 
-        // TODO [DS]: rewrite BlobDumper to use MKLDNNMemory
-//        BlobDumper dumper(prEdge->getBlob());
-//        if (pr->ext_scales)
-//            dumper.withScales(pr->ext_scales);
-//
-//        dump(dumper, dump_file);
+        BlobDumper dumper(prEdge->getMemory().GetDescWithType<MKLDNNMemoryDesc>(), prEdge->getMemory().GetData());
+        if (pr->ext_scales)
+            dumper.withScales(pr->ext_scales);
+
+        dump(dumper, dump_file);
     }
 
     dumpInternalBlobs(node);
@@ -106,12 +106,11 @@ void NodeDumper::dumpOutputBlobs(const MKLDNNNodePtr& node) const {
         if (desc.getPrecision() == Precision::BIN)
             continue;
 
-        // TODO [DS]: rewrite BlobDumper to use MKLDNNMemory
-//        BlobDumper dumper(childEdge->getBlob());
-//        if (node->ext_scales)
-//            dumper.withScales(node->ext_scales);
-//
-//        dump(dumper, dump_file);
+        BlobDumper dumper(childEdge->getMemory().GetDescWithType<MKLDNNMemoryDesc>(), childEdge->getMemory().GetData());
+        if (node->ext_scales)
+            dumper.withScales(node->ext_scales);
+
+        dump(dumper, dump_file);
     }
 }
 
@@ -128,7 +127,7 @@ void NodeDumper::dumpInternalBlobs(const MKLDNNNodePtr& node) const {
         if (desc.getPrecision() == Precision::BIN)
             continue;
 
-        BlobDumper dumper(blb);
+        BlobDumper dumper(MemoryDescUtils::convertToMKLDNNMemoryDesc(desc), blb->buffer());
         dump(dumper, dump_file);
     }
 }

@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "ie_blob.h"
+#include "mkldnn_memory.h"
 
 #include <string>
 
@@ -19,7 +19,8 @@ namespace MKLDNNPlugin {
  * NB! Channel is a second dimension for all blob types.
  */
 class BlobDumper {
-    InferenceEngine::Blob::Ptr _blob;
+    MKLDNNMemoryDesc desc;
+    const void *ptr;
     InferenceEngine::Blob::Ptr _scales;
 
 public:
@@ -27,7 +28,7 @@ public:
     BlobDumper(const BlobDumper&) = default;
     BlobDumper& operator = (BlobDumper&&) = default;
 
-    explicit BlobDumper(const InferenceEngine::Blob::Ptr blob):_blob(blob) {}
+    explicit BlobDumper(const MKLDNNMemoryDesc &_desc, const void *_ptr) : desc(_desc), ptr(_ptr) {}
 
     static BlobDumper read(const std::string &file_path);
     static BlobDumper read(std::istream &stream);
@@ -43,7 +44,6 @@ public:
 
     const InferenceEngine::Blob::Ptr& getScales() const;
 
-    InferenceEngine::Blob::Ptr get();
     InferenceEngine::Blob::Ptr getRealValue();
 };
 
